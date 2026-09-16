@@ -10,7 +10,7 @@ requireRole('billing');
 $user = currentUser();
 $db = Database::getConnection();
 
-$error = '';
+$error = ''
 
 // Record Payment Submission Handler
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {

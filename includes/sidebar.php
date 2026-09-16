@@ -19,6 +19,7 @@ $currentScript = basename($_SERVER['PHP_SELF']);
             <a href="<?= BASE_URL ?>admin/appointments.php" class="list-group-item <?= $currentScript == 'appointments.php' ? 'active' : '' ?>"><i class="bi bi-calendar-check me-2"></i>Appointments</a>
             <a href="<?= BASE_URL ?>admin/billing.php" class="list-group-item <?= $currentScript == 'billing.php' ? 'active' : '' ?>"><i class="bi bi-receipt me-2"></i>Financial Billing</a>
             <a href="<?= BASE_URL ?>admin/audit-logs.php" class="list-group-item <?= $currentScript == 'audit-logs.php' ? 'active' : '' ?>"><i class="bi bi-journal-text me-2"></i>Audit Logs</a>
+ <a href="<?= BASE_URL ?>admin/settings.php" class="list-group-item <?= $currentScript == 'settings.php' ? 'active' : '' ?>"><i class="bi bi-journal-text me-2"></i>Settings</a>
 
         <?php elseif ($role === 'doctor'): ?>
             <a href="<?= BASE_URL ?>doctor/index.php" class="list-group-item <?= $currentScript == 'index.php' ? 'active' : '' ?>"><i class="bi bi-speedometer2 me-2"></i>Dashboard</a>

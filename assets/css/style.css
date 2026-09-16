@@ -1,0 +1,141 @@
+/* Custom System SaaS Styling Framework */
+:root {
+    --cp-primary: #0284c7;
+    --cp-primary-hover: #0369a1;
+    --cp-secondary: #0f766e;
+    --cp-dark: #0f172a;
+    --cp-light: #f8fafc;
+    --cp-sidebar-width: 260px;
+}
+
+body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background-color: #f1f5f9;
+    color: #334155;
+    overflow-x: hidden;
+}
+
+/* Sidebar Styling */
+#sidebar-wrapper {
+    min-height: 100vh;
+    width: var(--cp-sidebar-width);
+    background: #0f172a;
+    transition: margin 0.25s ease-out;
+    position: fixed;
+    z-index: 1000;
+}
+
+#sidebar-wrapper .sidebar-heading {
+    padding: 1.25rem 1.5rem;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #ffffff;
+    border-bottom: 1px solid #1e293b;
+}
+
+#sidebar-wrapper .list-group-item {
+    border: none;
+    padding: 0.85rem 1.5rem;
+    background: transparent;
+    color: #94a3b8;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+#sidebar-wrapper .list-group-item:hover,
+#sidebar-wrapper .list-group-item.active {
+    color: #ffffff;
+    background-color: #1e293b;
+    border-left: 4px solid var(--cp-primary);
+}
+
+#sidebar-wrapper .list-group-item i {
+    width: 24px;
+}
+
+/* Page Layout Wrappers */
+#page-content-wrapper {
+    margin-left: var(--cp-sidebar-width);
+    width: calc(100% - var(--cp-sidebar-width));
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Navbar Tuning */
+.main-navbar {
+    background: #ffffff;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+}
+
+/* Metric KPI Dashboard Cards */
+.card-kpi {
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.card-kpi:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
+.kpi-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+}
+
+/* Clinical EMR Timeline Styling */
+.timeline {
+    position: relative;
+    padding-left: 30px;
+    list-style: none;
+}
+
+.timeline::before {
+    content: '';
+    position: absolute;
+    left: 9px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: #e2e8f0;
+}
+
+.timeline-item {
+    position: relative;
+    margin-bottom: 1.5rem;
+}
+
+.timeline-item::before {
+    content: '';
+    position: absolute;
+    left: -26px;
+    top: 4px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--cp-primary);
+    border: 2px solid #fff;
+}
+
+/* Print Specific Rules */
+@media print {
+    #sidebar-wrapper, .main-navbar, .btn-print-hide {
+        display: none !important;
+    }
+    #page-content-wrapper {
+        margin-left: 0 !important;
+        width: 100% !important;
+    }
+    .card {
+        border: none !important;
+        box-shadow: none !important;
+    }
+}

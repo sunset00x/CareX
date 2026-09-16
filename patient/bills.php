@@ -7,7 +7,7 @@ require_once __DIR__ . '/../includes/header.php';
 require_once __DIR__ . '/../includes/sidebar.php';
 requireRole('patient');
 
-$user = currentUser()
+$user = currentUser();
 $db = Database::getConnection();
 
 // Fetch Patient ID

@@ -5,7 +5,8 @@
  */
 
 // Prevent direct execution
-if (count(get_included_files()) == 1) exit("Direct access not permitted.")
+if (count(get_included_files()) == 1) exit("Direct access not permitted.");
+
 // Application Metadata
 define('APP_NAME', 'CarePlus Hospital Management System');
 define('APP_SHORT_NAME', 'CarePlus HMS');

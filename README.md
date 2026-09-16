@@ -38,3 +38,7 @@ Extract the project folder into your local XAMPP webserver root:
 Verify base directory configuration settings inside `config/config.php`:
 ```php
 define('BASE_URL', 'http://localhost/hospital-system/');
+
+
+Dm me on linkedin for any query
+sunset00x ( github & linkedin)

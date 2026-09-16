@@ -4,7 +4,8 @@
  * CarePlus Smart Hospital Management System
  */
 
-require_once __DIR__ . '/config/config.php';
+// Fix relative path: point to root config/ and includes/
+require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/functions.php';
 
 /**

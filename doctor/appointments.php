@@ -8,7 +8,7 @@ require_once __DIR__ . '/../includes/sidebar.php';
 requireRole('doctor');
 
 $user = currentUser();
-$db = Database::getConnection()
+$db = Database::getConnection();
 
 // Fetch Doctor Record ID
 $stmtD = $db->prepare("SELECT id FROM doctors WHERE user_id = ?");

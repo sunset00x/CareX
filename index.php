@@ -119,41 +119,45 @@ $totalDepts    = (int)($db->query("SELECT COUNT(*) FROM departments WHERE status
     </div>
 </section>
 
-<!-- Services Overview Section -->
+<!-- Dynamic Healthcare Services / Departments Section -->
 <section id="services" class="py-5 bg-light">
     <div class="container">
         <div class="text-center mb-5">
-            <h2 class="fw-bold">Healthcare Services</h2>
-            <p class="text-muted">Integrated medical platform capabilities for doctors and patients.</p>
+            <h2 class="fw-bold text-dark">Healthcare Services & Active Departments</h2>
+            <p class="text-muted">Specialized medical services currently active in our hospital center.</p>
         </div>
+        
         <div class="row g-4">
-            <div class="col-md-4">
-                <div class="card h-100 border-0 shadow-sm p-3">
-                    <div class="card-body">
-                        <div class="feature-icon"><i class="bi bi-calendar-check"></i></div>
-                        <h5 class="fw-bold">Online Scheduling</h5>
-                        <p class="text-muted">Book real-time appointment slots with conflict checks.</p>
+            <?php 
+            // Query active departments directly from the database
+            $stmtActiveDepts = $db->query("SELECT * FROM departments WHERE status = 'active' ORDER BY name ASC");
+            $activeServices = $stmtActiveDepts->fetchAll();
+
+            if (!empty($activeServices)): 
+                foreach ($activeServices as $dept): 
+            ?>
+                <div class="col-md-4">
+                    <div class="card h-100 border-0 shadow-sm p-3 rounded-4">
+                        <div class="card-body">
+                            <div class="feature-icon bg-primary-subtle text-primary p-3 rounded-3 d-inline-block mb-3">
+                                <i class="bi bi-hospital fs-3"></i>
+                            </div>
+                            <h5 class="fw-bold text-dark"><?= sanitize($dept['name']) ?></h5>
+                            <p class="text-muted small mb-0">
+                                <?= sanitize($dept['description'] ?: 'Providing specialized diagnostic and therapeutic clinical care.') ?>
+                            </p>
+                        </div>
                     </div>
                 </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card h-100 border-0 shadow-sm p-3">
-                    <div class="card-body">
-                        <div class="feature-icon"><i class="bi bi-file-earmark-medical"></i></div>
-                        <h5 class="fw-bold">Digital EMR Records</h5>
-                        <p class="text-muted">Centralized patient medical histories and diagnostic reports.</p>
-                    </div>
+            <?php 
+                endforeach; 
+            else: 
+            ?>
+                <div class="col-12 text-center py-4 text-muted">
+                    <i class="bi bi-building-exclamation fs-2 d-block mb-2 text-secondary"></i>
+                    No active departments are currently listed. Add or activate departments in <strong>admin/departments.php</strong>.
                 </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card h-100 border-0 shadow-sm p-3">
-                    <div class="card-body">
-                        <div class="feature-icon"><i class="bi bi-receipt"></i></div>
-                        <h5 class="fw-bold">Transparent Billing</h5>
-                        <p class="text-muted">Instant invoice receipts and payment tracking.</p>
-                    </div>
-                </div>
-            </div>
+            <?php endif; ?>
         </div>
     </div>
 </section>

@@ -8,7 +8,7 @@ require_once __DIR__ . '/../includes/sidebar.php';
 requireRole('laboratory');
 
 $user = currentUser();
-$db = Database::getConnection()
+$db = Database::getConnection();
 
 // Fetch Pending and Completed Lab Statistics
 $stmtPending = $db->query("SELECT COUNT(*) FROM lab_tests WHERE status IN ('Pending', 'In-Progress')");

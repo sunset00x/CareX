@@ -4,28 +4,29 @@ $user = currentUser();
 $role = $user['role'] ?? '';
 $currentScript = basename($_SERVER['PHP_SELF']);
 ?>
-<div id="sidebar-wrapper">
-    <div class="sidebar-heading d-flex align-items-center">
+<div id="sidebar-wrapper" class="bg-dark text-white border-end shadow-sm d-flex flex-column" style="width: 250px; min-width: 250px; height: 100vh; position: sticky; top: 0; overflow-y: auto;">
+    <div class="sidebar-heading d-flex align-items-center p-3 border-bottom border-secondary">
         <i class="bi bi-heart-pulse-fill text-primary me-2 fs-4"></i>
-        <span>CarePlus HMS</span>
+        <span class="fw-bold text-white fs-5">CarePlus HMS</span>
     </div>
-    <div class="list-group list-group-flush py-3">
+    
+    <div class="list-group list-group-flush py-3 flex-grow-1">
         <?php if ($role === 'admin'): ?>
-           <a href="<?= BASE_URL ?>admin/index.php" class="list-group-item <?= $currentScript == 'index.php' ? 'active' : '' ?>"><i class="bi bi-speedometer2 me-2"></i>Dashboard</a>
-<a href="<?= BASE_URL ?>admin/departments.php" class="list-group-item <?= $currentScript == 'departments.php' ? 'active' : '' ?>"><i class="bi bi-building me-2"></i>Departments</a>
-<a href="<?= BASE_URL ?>admin/doctors.php" class="list-group-item <?= $currentScript == 'doctors.php' ? 'active' : '' ?>"><i class="bi bi-person-md me-2"></i>Doctors</a>
-<a href="<?= BASE_URL ?>admin/patients.php" class="list-group-item <?= $currentScript == 'patients.php' ? 'active' : '' ?>"><i class="bi bi-people me-2"></i>Patients</a>
-<a href="<?= BASE_URL ?>admin/users.php" class="list-group-item <?= $currentScript == 'users.php' ? 'active' : '' ?>"><i class="bi bi-shield-lock me-2"></i>Users & Roles</a>
-<a href="<?= BASE_URL ?>admin/appointments.php" class="list-group-item <?= $currentScript == 'appointments.php' ? 'active' : '' ?>"><i class="bi bi-calendar-check me-2"></i>Appointments</a>
-<a href="<?= BASE_URL ?>admin/beds.php" class="list-group-item <?= $currentScript == 'beds.php' ? 'active' : '' ?>"><i class="bi bi-hospital me-2"></i>IPD Bed Matrix</a>
-<a href="<?= BASE_URL ?>admin/discharge.php" class="list-group-item <?= $currentScript == 'discharge.php' ? 'active' : '' ?>"><i class="bi bi-journal-check me-2"></i>Discharge Engine</a>
-<a href="<?= BASE_URL ?>admin/pharmacy.php" class="list-group-item <?= $currentScript == 'pharmacy.php' ? 'active' : '' ?>"><i class="bi bi-capsule me-2"></i>Pharmacy Stock</a>
-<a href="<?= BASE_URL ?>admin/pharmacy-pos.php" class="list-group-item <?= $currentScript == 'pharmacy-pos.php' ? 'active' : '' ?>"><i class="bi bi-cart-check me-2"></i>Pharmacy POS</a>
-<a href="<?= BASE_URL ?>admin/lab-lis.php" class="list-group-item <?= $currentScript == 'lab-lis.php' ? 'active' : '' ?>"><i class="bi bi-activity me-2"></i>Diagnostic LIS</a>
-<a href="<?= BASE_URL ?>admin/blood-bank.php" class="list-group-item <?= $currentScript == 'blood-bank.php' ? 'active' : '' ?>"><i class="bi bi-droplet-fill me-2"></i>Blood Bank</a>
-<a href="<?= BASE_URL ?>admin/billing.php" class="list-group-item <?= $currentScript == 'billing.php' ? 'active' : '' ?>"><i class="bi bi-receipt me-2"></i>Financial Billing</a>
-<a href="<?= BASE_URL ?>admin/audit-logs.php" class="list-group-item <?= $currentScript == 'audit-logs.php' ? 'active' : '' ?>"><i class="bi bi-journal-text me-2"></i>Audit Logs</a>
- <a href="<?= BASE_URL ?>admin/settings.php" class="list-group-item <?= $currentScript == 'settings.php' ? 'active' : '' ?>"><i class="bi bi-journal-text me-2"></i>Settings</a>
+            <a href="<?= BASE_URL ?>admin/index.php" class="list-group-item <?= $currentScript == 'index.php' ? 'active' : '' ?>"><i class="bi bi-speedometer2 me-2"></i>Dashboard</a>
+            <a href="<?= BASE_URL ?>admin/departments.php" class="list-group-item <?= $currentScript == 'departments.php' ? 'active' : '' ?>"><i class="bi bi-building me-2"></i>Departments</a>
+            <a href="<?= BASE_URL ?>admin/doctors.php" class="list-group-item <?= $currentScript == 'doctors.php' ? 'active' : '' ?>"><i class="bi bi-person-md me-2"></i>Doctors</a>
+            <a href="<?= BASE_URL ?>admin/patients.php" class="list-group-item <?= $currentScript == 'patients.php' ? 'active' : '' ?>"><i class="bi bi-people me-2"></i>Patients</a>
+            <a href="<?= BASE_URL ?>admin/users.php" class="list-group-item <?= $currentScript == 'users.php' ? 'active' : '' ?>"><i class="bi bi-shield-lock me-2"></i>Users & Roles</a>
+            <a href="<?= BASE_URL ?>admin/appointments.php" class="list-group-item <?= $currentScript == 'appointments.php' ? 'active' : '' ?>"><i class="bi bi-calendar-check me-2"></i>Appointments</a>
+            <a href="<?= BASE_URL ?>admin/beds.php" class="list-group-item <?= $currentScript == 'beds.php' ? 'active' : '' ?>"><i class="bi bi-hospital me-2"></i>IPD Bed Matrix</a>
+            <a href="<?= BASE_URL ?>admin/discharge.php" class="list-group-item <?= $currentScript == 'discharge.php' ? 'active' : '' ?>"><i class="bi bi-journal-check me-2"></i>Discharge Engine</a>
+            <a href="<?= BASE_URL ?>admin/pharmacy.php" class="list-group-item <?= $currentScript == 'pharmacy.php' ? 'active' : '' ?>"><i class="bi bi-capsule me-2"></i>Pharmacy Stock</a>
+            <a href="<?= BASE_URL ?>admin/pharmacy-pos.php" class="list-group-item <?= $currentScript == 'pharmacy-pos.php' ? 'active' : '' ?>"><i class="bi bi-cart-check me-2"></i>Pharmacy POS</a>
+            <a href="<?= BASE_URL ?>admin/lab-lis.php" class="list-group-item <?= $currentScript == 'lab-lis.php' ? 'active' : '' ?>"><i class="bi bi-activity me-2"></i>Diagnostic LIS</a>
+            <a href="<?= BASE_URL ?>admin/blood-bank.php" class="list-group-item <?= $currentScript == 'blood-bank.php' ? 'active' : '' ?>"><i class="bi bi-droplet-fill me-2"></i>Blood Bank</a>
+            <a href="<?= BASE_URL ?>admin/billing.php" class="list-group-item <?= $currentScript == 'billing.php' ? 'active' : '' ?>"><i class="bi bi-receipt me-2"></i>Financial Billing</a>
+            <a href="<?= BASE_URL ?>admin/audit-logs.php" class="list-group-item <?= $currentScript == 'audit-logs.php' ? 'active' : '' ?>"><i class="bi bi-journal-text me-2"></i>Audit Logs</a>
+            <a href="<?= BASE_URL ?>admin/settings.php" class="list-group-item <?= $currentScript == 'settings.php' ? 'active' : '' ?>"><i class="bi bi-gear me-2"></i>Settings</a>
 
         <?php elseif ($role === 'doctor'): ?>
             <a href="<?= BASE_URL ?>doctor/index.php" class="list-group-item <?= $currentScript == 'index.php' ? 'active' : '' ?>"><i class="bi bi-speedometer2 me-2"></i>Dashboard</a>
@@ -38,6 +39,7 @@ $currentScript = basename($_SERVER['PHP_SELF']);
 
         <?php elseif ($role === 'patient'): ?>
             <a href="<?= BASE_URL ?>patient/index.php" class="list-group-item <?= $currentScript == 'index.php' ? 'active' : '' ?>"><i class="bi bi-speedometer2 me-2"></i>Dashboard</a>
+            <a href="<?= BASE_URL ?>patient/symptom-checker.php" class="list-group-item <?= $currentScript == 'symptom-checker.php' ? 'active' : '' ?>"><i class="bi bi-cpu me-2"></i>AI Symptom Triage</a>
             <a href="<?= BASE_URL ?>patient/find-doctor.php" class="list-group-item <?= $currentScript == 'find-doctor.php' ? 'active' : '' ?>"><i class="bi bi-search me-2"></i>Find a Doctor</a>
             <a href="<?= BASE_URL ?>patient/book-appointment.php" class="list-group-item <?= $currentScript == 'book-appointment.php' ? 'active' : '' ?>"><i class="bi bi-calendar-plus me-2"></i>Book Appointment</a>
             <a href="<?= BASE_URL ?>patient/appointments.php" class="list-group-item <?= $currentScript == 'appointments.php' ? 'active' : '' ?>"><i class="bi bi-calendar-check me-2"></i>My Appointments</a>

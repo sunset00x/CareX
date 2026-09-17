@@ -1,12 +1,9 @@
 <?php
-/**
- * Global Public Site Header Navigation
- * CarePlus Smart Hospital Management System
- */
+
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/functions.php';
-
+require_once __DIR__ . '/auth.php';
 $db = Database::getConnection();
 $sysSettings = $db->query("SELECT * FROM system_settings WHERE id = 1")->fetch() ?: [];
 $hospName = $sysSettings['hospital_name'] ?? 'CarePlus Hospital';
@@ -14,7 +11,7 @@ $hospName = $sysSettings['hospital_name'] ?? 'CarePlus Hospital';
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
+    <meta charset="UTF-8">  
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= sanitize($hospName) ?> - Smart Healthcare, Better Care</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -66,7 +63,7 @@ $hospName = $sysSettings['hospital_name'] ?? 'CarePlus Hospital';
                 <li class="nav-item"><a class="nav-link" href="<?= BASE_URL ?>index.php#services">Services</a></li>
             </ul>
             <div class="d-flex gap-2">
-                <a href="<?= BASE_URL ?>login.php" class="btn btn-outline-primary px-4 rounded-pill">Login</a>
+                <a href="<?= BASE_URL ?>patient_login.php" class="btn btn-outline-primary px-4 rounded-pill">Login</a>
                 <a href="<?= BASE_URL ?>register.php" class="btn btn-primary px-4 rounded-pill">Register</a>
             </div>
         </div>

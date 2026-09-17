@@ -3,7 +3,10 @@
  * Dedicated Patient Login Gateway
  * CarePlus Smart Hospital Management System
  */
-require_once __DIR__ . '/includes/public_header.php';
+require_once __DIR__ . '/config/config.php';
+require_once __DIR__ . '/config/database.php';
+require_once __DIR__ . '/includes/functions.php';
+require_once __DIR__ . '/includes/auth.php';
 
 // Redirect if patient is already logged in
 if (isLoggedIn()) {
@@ -73,6 +76,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 }
+
+// Now include public header layout
+require_once __DIR__ . '/includes/public_header.php';
 ?>
 
 <div class="container py-5 my-4">

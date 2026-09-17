@@ -1,7 +1,5 @@
 <?php
-/**
- * Billing Staff - Invoice Creation & Detailed Printing
- */
+
 $pageTitle = "Invoices";
 require_once __DIR__ . '/../includes/header.php';
 require_once __DIR__ . '/../includes/sidebar.php';
@@ -14,7 +12,6 @@ $action = sanitize($_GET['action'] ?? '');
 $invoiceId = (int)($_GET['id'] ?? 0);
 $error = '';
 
-// Invoice Creation Form Handler
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $patientId = (int)($_POST['patient_id'] ?? 0);
     $discount  = (float)($_POST['discount'] ?? 0);

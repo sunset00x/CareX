@@ -1,8 +1,4 @@
--- =============================================================
--- Database Schema: smart_hospital
--- Description: Complete Relational Schema for CarePlus Enterprise HMS
--- Server Engine: MySQL 8.0+ / InnoDB / utf8mb4
--- =============================================================
+
 
 CREATE DATABASE IF NOT EXISTS `smart_hospital` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE `smart_hospital`;

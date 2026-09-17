@@ -1,6 +1,7 @@
 <?php
+ob_start();
 /**
- * Admin - Hospital Departments Management & Editing Engine
+ * Admin - Department Management Console & Clinical Unit Tracking
  * CarePlus Smart Hospital Management System
  */
 $pageTitle = "Departments Management";
@@ -12,69 +13,102 @@ $db = Database::getConnection();
 $error = '';
 
 // ==========================================
-// FORM ACTION HANDLERS (CREATE & EDIT)
+// FORM ACTION HANDLERS (POST)
 // ==========================================
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = sanitize($_POST['action'] ?? '');
     $token  = $_POST['csrf_token'] ?? '';
 
     if (!verifyCSRFToken($token)) {
-        $error = "Security Token Error. Action cancelled.";
+        $error = "CSRF Token Validation Failed.";
     } else {
-        // 1. CREATE NEW DEPARTMENT
-        if ($action === 'create') {
-            $name = sanitize($_POST['name'] ?? '');
-            $desc = sanitize($_POST['description'] ?? '');
 
-            if (empty($name)) {
-                $error = "Department name is required.";
-            } else {
+        // 1. ADD NEW DEPARTMENT
+        if ($action === 'add_department') {
+            $name        = sanitize($_POST['name'] ?? '');
+            $code        = strtoupper(sanitize($_POST['code'] ?? ''));
+            $description = sanitize($_POST['description'] ?? '');
+            $status      = sanitize($_POST['status'] ?? 'active');
+
+            if (!empty($name) && !empty($code)) {
                 try {
-                    $stmtIns = $db->prepare("INSERT INTO departments (name, description, status) VALUES (?, ?, 'active')");
-                    $stmtIns->execute([$name, $desc]);
+                    $stmt = $db->prepare("INSERT INTO departments (name, code, description, status) VALUES (?, ?, ?, ?)");
+                    $stmt->execute([$name, $code, $description, $status]);
 
-                    logAudit($_SESSION['user_id'], "Added New Department '{$name}'", 'Departments');
+                    logAudit($_SESSION['user_id'], "Created Department {$name} ({$code})", 'Departments');
                     setFlashMessage('success', "Department '{$name}' created successfully.");
                     header('Location: departments.php');
                     exit();
                 } catch (\Exception $e) {
                     $error = "Department creation error: " . $e->getMessage();
                 }
+            } else {
+                $error = "Please fill in all mandatory department fields.";
             }
         }
-        // 2. EDIT / UPDATE EXISTING DEPARTMENT
-        elseif ($action === 'edit') {
-            $deptId = (int)($_POST['department_id'] ?? 0);
-            $name   = sanitize($_POST['name'] ?? '');
-            $desc   = sanitize($_POST['description'] ?? '');
-            $status = sanitize($_POST['status'] ?? 'active');
 
-            if ($deptId > 0 && !empty($name)) {
+        // 2. EDIT DEPARTMENT
+        elseif ($action === 'edit_department') {
+            $deptId      = (int)($_POST['department_id'] ?? 0);
+            $name        = sanitize($_POST['name'] ?? '');
+            $code        = strtoupper(sanitize($_POST['code'] ?? ''));
+            $description = sanitize($_POST['description'] ?? '');
+            $status      = sanitize($_POST['status'] ?? 'active');
+
+            if ($deptId > 0 && !empty($name) && !empty($code)) {
                 try {
-                    $stmtUpd = $db->prepare("UPDATE departments SET name = ?, description = ?, status = ? WHERE id = ?");
-                    $stmtUpd->execute([$name, $desc, $status, $deptId]);
+                    $stmt = $db->prepare("UPDATE departments SET name = ?, code = ?, description = ?, status = ? WHERE id = ?");
+                    $stmt->execute([$name, $code, $description, $status, $deptId]);
 
-                    logAudit($_SESSION['user_id'], "Updated Department #{$deptId} ('{$name}')", 'Departments', $deptId);
-                    setFlashMessage('success', "Department '{$name}' details updated successfully.");
+                    logAudit($_SESSION['user_id'], "Updated Department #{$deptId} ({$name})", 'Departments');
+                    setFlashMessage('success', "Department '{$name}' updated successfully.");
                     header('Location: departments.php');
                     exit();
                 } catch (\Exception $e) {
-                    $error = "Update error: " . $e->getMessage();
+                    $error = "Department update error: " . $e->getMessage();
                 }
             } else {
-                $error = "Please provide a valid department name.";
+                $error = "Please fill in all mandatory fields for editing.";
+            }
+        }
+
+        // 3. DELETE DEPARTMENT
+        elseif ($action === 'delete_department') {
+            $deptId = (int)($_POST['department_id'] ?? 0);
+
+            if ($deptId > 0) {
+                try {
+                    // Check if doctors are assigned
+                    $stmtChk = $db->prepare("SELECT COUNT(*) FROM doctors WHERE department_id = ?");
+                    $stmtChk->execute([$deptId]);
+                    $docCount = $stmtChk->fetchColumn();
+
+                    if ($docCount > 0) {
+                        $error = "Cannot delete department! There are {$docCount} doctor(s) assigned to this department.";
+                    } else {
+                        $stmtDel = $db->prepare("DELETE FROM departments WHERE id = ?");
+                        $stmtDel->execute([$deptId]);
+
+                        logAudit($_SESSION['user_id'], "Deleted Department #{$deptId}", 'Departments');
+                        setFlashMessage('success', "Department deleted successfully.");
+                        header('Location: departments.php');
+                        exit();
+                    }
+                } catch (\Exception $e) {
+                    $error = "Department deletion error: " . $e->getMessage();
+                }
             }
         }
     }
 }
 
-// Fetch all departments with active doctor counts
+// Fetch all departments with doctor counts
 $departments = $db->query("
-    SELECT d.*, COUNT(doc.id) as doctor_count 
-    FROM departments d 
-    LEFT JOIN doctors doc ON doc.department_id = d.id 
-    GROUP BY d.id 
-    ORDER BY d.name ASC
+    SELECT dept.*, COUNT(d.id) as total_doctors 
+    FROM departments dept 
+    LEFT JOIN doctors d ON dept.id = d.department_id 
+    GROUP BY dept.id 
+    ORDER BY dept.name ASC
 ")->fetchAll();
 ?>
 
@@ -83,139 +117,161 @@ $departments = $db->query("
 
     <div class="container-fluid p-4">
         <?php displayFlashMessage(); ?>
-        <?php if (!empty($error)): ?><div class="alert alert-danger shadow-sm"><?= sanitize($error) ?></div><?php endif; ?>
+        <?php if (!empty($error)): ?><div class="alert alert-danger"><?= sanitize($error) ?></div><?php endif; ?>
 
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
-                <h2 class="fw-bold mb-0">Hospital Departments Directory</h2>
-                <p class="text-muted mb-0">Add, edit, or toggle clinical department information shown across the hospital system.</p>
+                <h2 class="fw-bold mb-0">Clinical Departments & Units</h2>
+                <p class="text-muted mb-0">Configure hospital specialties, clinical codes, and staff assignments.</p>
             </div>
+            <button class="btn btn-primary fw-bold rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#addDeptModal">
+                <i class="bi bi-building-add me-1"></i> Add Department
+            </button>
         </div>
 
-        <div class="row g-4">
-            <!-- Left Side: Add Department Form -->
-            <div class="col-md-4">
-                <div class="card border-0 shadow-sm rounded-4">
-                    <div class="card-header bg-white py-3">
-                        <h5 class="fw-bold mb-0"><i class="bi bi-plus-circle text-primary me-2"></i>Add New Department</h5>
-                    </div>
-                    <div class="card-body p-4">
-                        <form action="departments.php" method="POST">
-                            <input type="hidden" name="csrf_token" value="<?= generateCSRFToken() ?>">
-                            <input type="hidden" name="action" value="create">
-
-                            <div class="mb-3">
-                                <label class="form-label fw-semibold">Department Name *</label>
-                                <input type="text" name="name" class="form-control" placeholder="e.g. Cardiology" required>
-                            </div>
-
-                            <div class="mb-4">
-                                <label class="form-label fw-semibold">Description</label>
-                                <textarea name="description" class="form-control" rows="3" placeholder="Overview of department services..."></textarea>
-                            </div>
-
-                            <button type="submit" class="btn btn-primary w-100 fw-bold shadow-sm">Save Department</button>
-                        </form>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Right Side: Departments Directory & Edit Actions -->
-            <div class="col-md-8">
-                <div class="card border-0 shadow-sm rounded-4">
-                    <div class="card-header bg-white py-3">
-                        <h5 class="fw-bold mb-0"><i class="bi bi-building me-2"></i>Active & Inactive Departments</h5>
-                    </div>
-                    <div class="card-body p-0">
-                        <div class="table-responsive">
-                            <table class="table table-hover align-middle mb-0">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>ID</th>
-                                        <th>Department Info</th>
-                                        <th>Assigned Doctors</th>
-                                        <th>Status</th>
-                                        <th class="text-end pe-4">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php if (!empty($departments)): foreach ($departments as $dept): ?>
-                                        <tr>
-                                            <td><code>#<?= $dept['id'] ?></code></td>
-                                            <td>
-                                                <div class="fw-bold text-dark"><?= sanitize($dept['name']) ?></div>
-                                                <small class="text-muted d-block text-truncate" style="max-width: 250px;">
-                                                    <?= sanitize($dept['description'] ?: 'No description provided.') ?>
-                                                </small>
-                                            </td>
-                                            <td><span class="badge bg-primary-subtle text-primary fw-bold"><?= $dept['doctor_count'] ?> Doctors</span></td>
-                                            <td>
-                                                <span class="badge bg-<?= $dept['status'] === 'active' ? 'success' : 'danger' ?> px-3 py-1">
-                                                    <?= ucfirst(sanitize($dept['status'])) ?>
-                                                </span>
-                                            </td>
-                                            <td class="text-end pe-4">
-                                                <button type="button" class="btn btn-sm btn-outline-primary fw-semibold"
-                                                        data-bs-toggle="modal" 
-                                                        data-bs-target="#editDeptModal"
-                                                        data-id="<?= $dept['id'] ?>"
-                                                        data-name="<?= sanitize($dept['name']) ?>"
-                                                        data-desc="<?= sanitize($dept['description']) ?>"
-                                                        data-status="<?= sanitize($dept['status']) ?>">
-                                                    <i class="bi bi-pencil-square me-1"></i>Edit
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    <?php endforeach; else: ?>
-                                        <tr><td colspan="5" class="text-center py-4 text-muted">No departments created yet.</td></tr>
-                                    <?php endif; ?>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
+        <div class="card border-0 shadow-sm rounded-4">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Code</th>
+                                <th>Department Name</th>
+                                <th>Description</th>
+                                <th>Assigned Doctors</th>
+                                <th>Status</th>
+                                <th class="text-end pe-4">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if (!empty($departments)): foreach ($departments as $dept): ?>
+                                <tr>
+                                    <td><span class="badge bg-secondary"><?= sanitize($dept['code'] ?? 'N/A') ?></span></td><td class="fw-bold text-dark"><?= sanitize($dept['name']) ?></td>
+                                    <td><small class="text-muted"><?= sanitize($dept['description'] ?: 'N/A') ?></small></td>
+                                    <td>
+                                        <span class="badge bg-primary-subtle text-primary fw-bold px-3 py-1">
+                                            <?= $dept['total_doctors'] ?> Doctor(s)
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-<?= $dept['status'] === 'active' ? 'success' : 'danger' ?> text-capitalize">
+                                            <?= sanitize($dept['status']) ?>
+                                        </span>
+                                    </td>
+                                    <td class="text-end pe-4">
+                                        <button type="button" 
+                                                class="btn btn-sm btn-outline-primary fw-bold rounded-pill me-1"
+                                                data-bs-toggle="modal" 
+                                                data-bs-target="#editDeptModal"
+                                                data-dept='<?= json_encode($dept, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>'>
+                                            <i class="bi bi-pencil-square me-1"></i> Edit
+                                        </button>
+                                        <form action="departments.php" method="POST" class="d-inline" onsubmit="return confirm('Delete department <?= sanitize($dept['name']) ?>?');">
+                                            <input type="hidden" name="csrf_token" value="<?= generateCSRFToken() ?>">
+                                            <input type="hidden" name="action" value="delete_department">
+                                            <input type="hidden" name="department_id" value="<?= $dept['id'] ?>">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger fw-bold rounded-pill">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            <?php endforeach; else: ?>
+                                <tr><td colspan="6" class="text-center py-4 text-muted">No department records found.</td></tr>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- ========================================== -->
-<!-- MODAL: EDIT DEPARTMENT DETAILS              -->
-<!-- ========================================== -->
-<div class="modal fade" id="editDeptModal" tabindex="-1">
+<!-- Modal: Add Department -->
+<div class="modal fade" id="addDeptModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header bg-light border-0">
-                <h5 class="modal-title fw-bold"><i class="bi bi-pencil-square text-primary me-2"></i>Edit Department Info</h5>
+                <h5 class="modal-title fw-bold"><i class="bi bi-building-add text-primary me-2"></i>New Clinical Department</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form action="departments.php" method="POST">
                 <div class="modal-body p-4">
                     <input type="hidden" name="csrf_token" value="<?= generateCSRFToken() ?>">
-                    <input type="hidden" name="action" value="edit">
-                    <input type="hidden" name="department_id" id="edit_dept_id">
+                    <input type="hidden" name="action" value="add_department">
 
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Department Name *</label>
-                        <input type="text" name="name" id="edit_dept_name" class="form-control" required>
+                        <input type="text" name="name" class="form-control" placeholder="e.g. Cardiology, Neurology" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Department Code *</label>
+                        <input type="text" name="code" class="form-control" placeholder="e.g. CARD, NEUR" required>
                     </div>
 
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Description</label>
-                        <textarea name="description" id="edit_dept_desc" class="form-control" rows="3"></textarea>
+                        <textarea name="description" class="form-control" rows="3" placeholder="Clinical functions or ward notes..."></textarea>
                     </div>
 
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Status *</label>
-                        <select name="status" id="edit_dept_status" class="form-select" required>
-                            <option value="active">Active (Visible Publicly)</option>
-                            <option value="inactive">Inactive (Hidden)</option>
+                        <select name="status" class="form-select" required>
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
                         </select>
                     </div>
                 </div>
                 <div class="modal-footer border-0 bg-light">
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary fw-bold px-4">Update Department</button>
+                    <button type="submit" class="btn btn-primary fw-bold px-4">Create Department</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Edit Department -->
+<div class="modal fade" id="editDeptModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-light border-0">
+                <h5 class="modal-title fw-bold"><i class="bi bi-building-gear text-primary me-2"></i>Edit Department Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="departments.php" method="POST">
+                <div class="modal-body p-4">
+                    <input type="hidden" name="csrf_token" value="<?= generateCSRFToken() ?>">
+                    <input type="hidden" name="action" value="edit_department">
+                    <input type="hidden" name="department_id" id="edit_dept_id">
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Department Name *</label>
+                        <input type="text" name="name" id="edit_name" class="form-control" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Department Code *</label>
+                        <input type="text" name="code" id="edit_code" class="form-control" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Description</label>
+                        <textarea name="description" id="edit_description" class="form-control" rows="3"></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Status *</label>
+                        <select name="status" id="edit_status" class="form-select" required>
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 bg-light">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary fw-bold px-4">Save Changes</button>
                 </div>
             </form>
         </div>
@@ -226,15 +282,21 @@ $departments = $db->query("
 document.addEventListener('DOMContentLoaded', function() {
     const editModal = document.getElementById('editDeptModal');
     if (editModal) {
-        editModal.addEventListener('show.bs.modal', function(e) {
-            const btn = e.relatedTarget;
-            document.getElementById('edit_dept_id').value     = btn.getAttribute('data-id');
-            document.getElementById('edit_dept_name').value   = btn.getAttribute('data-name');
-            document.getElementById('edit_dept_desc').value   = btn.getAttribute('data-desc');
-            document.getElementById('edit_dept_status').value = btn.getAttribute('data-status');
+        editModal.addEventListener('show.bs.modal', function(event) {
+            const btn = event.relatedTarget;
+            const data = JSON.parse(btn.getAttribute('data-dept'));
+
+            document.getElementById('edit_dept_id').value    = data.id;
+            document.getElementById('edit_name').value       = data.name;
+            document.getElementById('edit_code').value       = data.code;
+            document.getElementById('edit_description').value = data.description || '';
+            document.getElementById('edit_status').value     = data.status;
         });
     }
 });
 </script>
 
-<?php require_once __DIR__ . '/../includes/footer.php'; ?>
+<?php 
+require_once __DIR__ . '/../includes/footer.php'; 
+ob_end_flush();
+?>

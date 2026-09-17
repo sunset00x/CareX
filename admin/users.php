@@ -1,9 +1,11 @@
 <?php
+ob_start();
 /**
  * Advanced Admin - User Management Console, Live Session Guard & Device Tracker
  * CarePlus Smart Hospital Management System
  */
-$pageTitle = "Users & Access Control";
+
+// Include core database initialization before processing POST/GET exports
 require_once __DIR__ . '/../includes/header.php';
 require_once __DIR__ . '/../includes/sidebar.php';
 requireRole('admin');
@@ -56,6 +58,7 @@ if (isset($_GET['export']) && in_array($_GET['export'], ['csv', 'print'])) {
     $exportData = $stmtExp->fetchAll();
 
     if ($_GET['export'] === 'csv') {
+        if (ob_get_length()) ob_clean();
         header('Content-Type: text/csv; charset=utf-8');
         header('Content-Disposition: attachment; filename=careplus_users_' . date('Y-m-d') . '.csv');
         $output = fopen('php://output', 'w');
@@ -282,6 +285,7 @@ $stmtUsers->execute($params);
 $users = $stmtUsers->fetchAll();
 
 $kpiCounts = $db->query("SELECT role, COUNT(*) as count FROM users GROUP BY role")->fetchAll(PDO::FETCH_KEY_PAIR);
+$pageTitle = "Users & Access Control";
 ?>
 
 <style>
@@ -432,14 +436,14 @@ $kpiCounts = $db->query("SELECT role, COUNT(*) as count FROM users GROUP BY role
                                     </td>
                                     <td>
                                         <div class="d-flex align-items-center">
-                                            <img src="<?= BASE_URL ?>uploads/profile-images/<?= sanitize($u['profile_image']) ?>" class="rounded-circle border me-3 object-fit-cover" width="42" height="42">
+                                            <img src="<?= BASE_URL ?>uploads/profile-images/<?= sanitize($u['profile_image'] ?? 'default.png') ?>" class="rounded-circle border me-3 object-fit-cover" width="42" height="42">
                                             <div>
                                                 <div class="fw-bold text-dark mb-0"><?= sanitize($u['name']) ?></div>
                                                 <small class="text-muted">
-                                                    <?php if ($u['role'] === 'patient' && $u['patient_code']): ?>
+                                                    <?php if ($u['role'] === 'patient' && !empty($u['patient_code'])): ?>
                                                         ID: <code><?= sanitize($u['patient_code']) ?></code>
-                                                    <?php elseif ($u['role'] === 'doctor' && $u['doctor_code']): ?>
-                                                        Specialist: <?= sanitize($u['specialization']) ?>
+                                                    <?php elseif ($u['role'] === 'doctor' && !empty($u['doctor_code'])): ?>
+                                                        Specialist: <?= sanitize($u['specialization'] ?? 'General') ?>
                                                     <?php else: ?>
                                                         Created: <?= formatDate($u['created_at']) ?>
                                                     <?php endif; ?>
@@ -481,7 +485,7 @@ $kpiCounts = $db->query("SELECT role, COUNT(*) as count FROM users GROUP BY role
                                                             data-id="<?= $u['id'] ?>"
                                                             data-name="<?= sanitize($u['name']) ?>"
                                                             data-email="<?= sanitize($u['email']) ?>"
-                                                            data-phone="<?= sanitize($u['phone']) ?>"
+                                                            data-phone="<?= sanitize($u['phone'] ?? '') ?>"
                                                             data-role="<?= sanitize($u['role']) ?>"
                                                             data-status="<?= sanitize($u['status']) ?>">
                                                         <i class="bi bi-pencil-square me-2 text-primary"></i>Edit Profile Details
@@ -551,9 +555,7 @@ $kpiCounts = $db->query("SELECT role, COUNT(*) as count FROM users GROUP BY role
                                             </ul>
                                         </div>
 
-                                        <!-- ========================================== -->
                                         <!-- MODAL: DEEP PROFILE, DEVICE TRACKER & AUDIT -->
-                                        <!-- ========================================== -->
                                         <div class="modal fade text-start" id="viewModal<?= $u['id'] ?>" tabindex="-1">
                                             <div class="modal-dialog modal-lg modal-dialog-scrollable">
                                                 <div class="modal-content">
@@ -564,9 +566,8 @@ $kpiCounts = $db->query("SELECT role, COUNT(*) as count FROM users GROUP BY role
                                                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                                                     </div>
                                                     <div class="modal-body p-4">
-                                                        <!-- Profile Summary Bar -->
                                                         <div class="p-3 bg-light rounded-4 mb-4 border d-flex align-items-center">
-                                                            <img src="<?= BASE_URL ?>uploads/profile-images/<?= sanitize($u['profile_image']) ?>" class="rounded-circle me-3 object-fit-cover border" width="60" height="60">
+                                                            <img src="<?= BASE_URL ?>uploads/profile-images/<?= sanitize($u['profile_image'] ?? 'default.png') ?>" class="rounded-circle me-3 object-fit-cover border" width="60" height="60">
                                                             <div class="w-100">
                                                                 <div class="d-flex justify-content-between align-items-center">
                                                                     <h5 class="fw-bold mb-0"><?= sanitize($u['name']) ?></h5>
@@ -576,7 +577,6 @@ $kpiCounts = $db->query("SELECT role, COUNT(*) as count FROM users GROUP BY role
                                                             </div>
                                                         </div>
 
-                                                        <!-- Device & Login Tracker Grid -->
                                                         <div class="row g-2 mb-4">
                                                             <div class="col-md-4">
                                                                 <div class="p-3 bg-light rounded border">
@@ -593,12 +593,11 @@ $kpiCounts = $db->query("SELECT role, COUNT(*) as count FROM users GROUP BY role
                                                             <div class="col-md-4">
                                                                 <div class="p-3 bg-light rounded border">
                                                                     <small class="text-muted d-block fw-semibold">CLIENT DEVICE</small>
-                                                                    <small class="fw-bold text-dark"><?= parseUserAgent($u['user_agent']) ?></small>
+                                                                    <small class="fw-bold text-dark"><?= parseUserAgent($u['user_agent'] ?? '') ?></small>
                                                                 </div>
                                                             </div>
                                                         </div>
 
-                                                        <!-- Nav Tabs for Appointments vs Audit Stream -->
                                                         <ul class="nav nav-tabs mb-3" id="userTab<?= $u['id'] ?>" role="tablist">
                                                             <li class="nav-item" role="presentation">
                                                                 <button class="nav-link active fw-bold" id="appts-tab-<?= $u['id'] ?>" data-bs-toggle="tab" data-bs-target="#appts-<?= $u['id'] ?>" type="button">Appointments</button>
@@ -609,7 +608,6 @@ $kpiCounts = $db->query("SELECT role, COUNT(*) as count FROM users GROUP BY role
                                                         </ul>
 
                                                         <div class="tab-content" id="userTabContent<?= $u['id'] ?>">
-                                                            <!-- Tab 1: Appointments -->
                                                             <div class="tab-pane fade show active" id="appts-<?= $u['id'] ?>" role="tabpanel">
                                                                 <?php
                                                                 if ($u['role'] === 'patient') {
@@ -645,7 +643,6 @@ $kpiCounts = $db->query("SELECT role, COUNT(*) as count FROM users GROUP BY role
                                                                 <?php endif; ?>
                                                             </div>
 
-                                                            <!-- Tab 2: Audit Logs -->
                                                             <div class="tab-pane fade" id="logs-<?= $u['id'] ?>" role="tabpanel">
                                                                 <?php
                                                                 $stmtAudit = $db->prepare("SELECT * FROM audit_logs WHERE user_id = ? ORDER BY created_at DESC LIMIT 20");
@@ -694,9 +691,7 @@ $kpiCounts = $db->query("SELECT role, COUNT(*) as count FROM users GROUP BY role
     </div>
 </div>
 
-<!-- ========================================== -->
-<!-- MODAL: BULK CSV IMPORT                      -->
-<!-- ========================================== -->
+<!-- MODAL: BULK CSV IMPORT -->
 <div class="modal fade" id="importCsvModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -730,9 +725,7 @@ $kpiCounts = $db->query("SELECT role, COUNT(*) as count FROM users GROUP BY role
     </div>
 </div>
 
-<!-- ========================================== -->
-<!-- MODAL: EDIT USER DETAILS                   -->
-<!-- ========================================== -->
+<!-- MODAL: EDIT USER DETAILS -->
 <div class="modal fade" id="editModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -791,9 +784,7 @@ $kpiCounts = $db->query("SELECT role, COUNT(*) as count FROM users GROUP BY role
     </div>
 </div>
 
-<!-- ========================================== -->
-<!-- MODAL: OVERRIDE USER PASSWORD             -->
-<!-- ========================================== -->
+<!-- MODAL: OVERRIDE USER PASSWORD -->
 <div class="modal fade" id="passModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -823,9 +814,7 @@ $kpiCounts = $db->query("SELECT role, COUNT(*) as count FROM users GROUP BY role
     </div>
 </div>
 
-<!-- ========================================== -->
-<!-- MODAL: PERMANENT DELETE PROFILE CONFIRMATION-->
-<!-- ========================================== -->
+<!-- MODAL: PERMANENT DELETE PROFILE CONFIRMATION -->
 <div class="modal fade" id="deleteModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -889,4 +878,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
-<?php require_once __DIR__ . '/../includes/footer.php'; ?>
+<?php 
+require_once __DIR__ . '/../includes/footer.php'; 
+ob_end_flush();
+?>

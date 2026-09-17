@@ -109,6 +109,17 @@ $upcomingList = $stmtAppts->fetchAll();
             </div>
         </div>
 
+
+
+        <div class="card border-0 shadow-sm rounded-4 bg-primary text-white mb-4">
+    <div class="card-body p-4 d-flex align-items-center justify-content-between flex-wrap gap-3">
+        <div>
+            <h5 class="fw-bold mb-1"><i class="bi bi-cpu me-2"></i>Not sure which doctor to consult?</h5>
+            <p class="mb-0 opacity-90 small">Use our AI Symptom Matcher to get paired with the right medical specialist based on your symptoms.</p>
+        </div>
+        <a href="symptom-checker.php" class="btn btn-light text-primary fw-bold rounded-pill px-4 shadow-sm">Check Symptoms</a>
+    </div>
+</div>
         <!-- Upcoming Appointments Data Table -->
         <div class="card border-0 shadow-sm rounded-4">
             <div class="card-header bg-white py-3">

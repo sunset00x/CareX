@@ -10,7 +10,7 @@ $currentScript = basename($_SERVER['PHP_SELF']);
         <span class="fw-bold text-white fs-5">CarePlus HMS</span>
     </div>
     
-    <div class="list-group list-group-flush py-3 flex-grow-1">
+    <div class="list-group list-group-flush py-0 flex-grow-1">
         <?php if ($role === 'admin'): ?>
             <a href="<?= BASE_URL ?>admin/index.php" class="list-group-item <?= $currentScript == 'index.php' ? 'active' : '' ?>"><i class="bi bi-speedometer2 me-2"></i>Dashboard</a>
             <a href="<?= BASE_URL ?>admin/departments.php" class="list-group-item <?= $currentScript == 'departments.php' ? 'active' : '' ?>"><i class="bi bi-building me-2"></i>Departments</a>

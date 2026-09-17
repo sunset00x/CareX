@@ -9,6 +9,24 @@ requireRole(['admin', 'pharmacist']);
 $db = Database::getConnection();
 $error = '';
 
+try {
+    $db->exec("
+        CREATE TABLE IF NOT EXISTS pharmacy_sales (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            receipt_no VARCHAR(50) NOT NULL UNIQUE,
+            patient_id INT DEFAULT 0,
+            medicine_id INT NOT NULL,
+            quantity INT NOT NULL,
+            unit_price DECIMAL(10,2) NOT NULL,
+            total_amount DECIMAL(10,2) NOT NULL,
+            payment_method VARCHAR(50) DEFAULT 'Cash',
+            dispensed_by INT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    ");
+} catch (\PDOException $e) {
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = sanitize($_POST['action'] ?? '');
     $token  = $_POST['csrf_token'] ?? '';
@@ -16,8 +34,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!verifyCSRFToken($token)) {
         $error = "CSRF Token Validation Failed.";
     } else {
-
-        // PROCESS PHARMACY SALE / DISPENSE
         if ($action === 'process_sale') {
             $patientId  = (int)($_POST['patient_id'] ?? 0);
             $medicineId = (int)($_POST['medicine_id'] ?? 0);
@@ -28,18 +44,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 try {
                     $db->beginTransaction();
 
-                    // 1. Fetch & Check Stock
                     $stmtMed = $db->prepare("SELECT * FROM pharmacy_inventory WHERE id = ? FOR UPDATE");
                     $stmtMed->execute([$medicineId]);
                     $med = $stmtMed->fetch();
 
                     if (!$med) {
+                        $stmtMedAlt = $db->prepare("SELECT * FROM pharmacy WHERE id = ? FOR UPDATE");
+                        $stmtMedAlt->execute([$medicineId]);
+                        $med = $stmtMedAlt->fetch();
+                    }
+
+                    if (!$med) {
                         throw new \Exception("Medicine record not found.");
                     }
 
-                    $currentStock = $med['stock_quantity'] ?? $med['quantity'] ?? 0;
-                    $unitPrice    = $med['unit_price'] ?? $med['price'] ?? 0.00;
-                    $brandName    = $med['brand_name'] ?? $med['medicine_name'] ?? 'Medicine';
+                    $currentStock = $med['stock_quantity'] ?? $med['quantity'] ?? $med['stock'] ?? 0;
+                    $unitPrice    = $med['unit_price'] ?? $med['price'] ?? $med['rate'] ?? 0.00;
+                    $brandName    = $med['brand_name'] ?? $med['medicine_name'] ?? $med['name'] ?? 'Medicine';
 
                     if ($currentStock < $quantity) {
                         throw new \Exception("Insufficient stock! Available: {$currentStock} units.");
@@ -47,21 +68,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     $totalCost = $unitPrice * $quantity;
 
-                    // 2. Deduct Inventory Stock
-                    $stmtDeduct = $db->prepare("UPDATE pharmacy_inventory SET stock_quantity = GREATEST(0, stock_quantity - ?) WHERE id = ?");
-                    $stmtDeduct->execute([$quantity, $medicineId]);
+                    try {
+                        $stmtDeduct = $db->prepare("UPDATE pharmacy_inventory SET stock_quantity = GREATEST(0, stock_quantity - ?) WHERE id = ?");
+                        $stmtDeduct->execute([$quantity, $medicineId]);
+                    } catch (\PDOException $e) {
+                        try {
+                            $stmtDeduct = $db->prepare("UPDATE pharmacy SET quantity = GREATEST(0, quantity - ?) WHERE id = ?");
+                            $stmtDeduct->execute([$quantity, $medicineId]);
+                        } catch (\PDOException $ex) {
+                            $stmtDeduct = $db->prepare("UPDATE medicines SET stock = GREATEST(0, stock - ?) WHERE id = ?");
+                            $stmtDeduct->execute([$quantity, $medicineId]);
+                        }
+                    }
 
-                    // 3. Create Patient Invoice if patient assigned
+                    $receiptNo = 'REC-' . date('Ymd') . '-' . rand(1000, 9999);
+                    $dispensedBy = $_SESSION['user_id'] ?? 1;
+
+                    $stmtSales = $db->prepare("
+                        INSERT INTO pharmacy_sales 
+                        (receipt_no, patient_id, medicine_id, quantity, unit_price, total_amount, payment_method, dispensed_by) 
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    ");
+                    $stmtSales->execute([$receiptNo, $patientId, $medicineId, $quantity, $unitPrice, $totalCost, $payMethod, $dispensedBy]);
+
                     if ($patientId > 0) {
-                        $invNum = 'PHARM-' . date('Ymd') . '-' . rand(1000, 9999);
-                        $stmtInv = $db->prepare("INSERT INTO invoices (invoice_number, patient_id, total_amount, status) VALUES (?, ?, ?, 'Paid')");
-                        $stmtInv->execute([$invNum, $patientId, $totalCost]);
+                        $possibleColumns = ['total_amount', 'amount', 'grand_total', 'total'];
+                        foreach ($possibleColumns as $col) {
+                            try {
+                                $stmtInv = $db->prepare("INSERT INTO invoices (invoice_number, patient_id, {$col}, status) VALUES (?, ?, ?, 'Paid')");
+                                $stmtInv->execute([$receiptNo, $patientId, $totalCost]);
+                                break;
+                            } catch (\PDOException $e) {
+                                continue;
+                            }
+                        }
                     }
 
                     $db->commit();
-                    logAudit($_SESSION['user_id'], "Dispensed {$quantity} x {$brandName} (Total: " . formatCurrency($totalCost) . ")", 'Pharmacy POS');
+                    logAudit($dispensedBy, "Dispensed {$quantity} x {$brandName} (Total: " . formatCurrency($totalCost) . ")", 'Pharmacy POS');
                     setFlashMessage('success', "Sale completed successfully! Total: " . formatCurrency($totalCost));
-                    header('Location: pharmacy-pos.php');
+                    
+                    header('Location: pharmacy-pos.php?print_receipt=' . urlencode($receiptNo));
                     exit();
 
                 } catch (\Exception $e) {
@@ -75,24 +122,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// ==========================================
-// SAFE FETCH ALL MEDICINES FOR DROPDOWN
-// ==========================================
 $medicines = [];
-try {
-    $medicines = $db->query("
-        SELECT *, 
-               COALESCE(brand_name, medicine_name, 'Medicine') as display_name,
-               COALESCE(stock_quantity, quantity, 0) as display_stock,
-               COALESCE(unit_price, price, 0.00) as display_price
-        FROM pharmacy_inventory 
-        ORDER BY display_name ASC
-    ")->fetchAll();
-} catch (\PDOException $e) {
-    $medicines = [];
+$tableNames = ['pharmacy_inventory', 'pharmacy', 'medicines'];
+
+foreach ($tableNames as $table) {
+    try {
+        $rawMeds = $db->query("SELECT * FROM {$table}")->fetchAll();
+        
+        if (!empty($rawMeds)) {
+            foreach ($rawMeds as $m) {
+                $id    = $m['id'] ?? 0;
+                $name  = $m['brand_name'] ?? $m['medicine_name'] ?? $m['name'] ?? $m['title'] ?? 'Unknown Medicine';
+                $stock = $m['stock_quantity'] ?? $m['quantity'] ?? $m['stock'] ?? $m['qty'] ?? 0;
+                $price = $m['unit_price'] ?? $m['price'] ?? $m['rate'] ?? $m['cost'] ?? 0.00;
+
+                $medicines[] = [
+                    'id'            => $id,
+                    'display_name'  => $name,
+                    'display_stock' => (int)$stock,
+                    'display_price' => (float)$price
+                ];
+            }
+            break; 
+        }
+    } catch (\PDOException $e) {
+        continue;
+    }
 }
 
-// Fetch Active Patients
 $patients = [];
 try {
     $patients = $db->query("
@@ -104,6 +161,8 @@ try {
 } catch (\PDOException $e) {
     $patients = [];
 }
+
+$printReceiptNo = sanitize($_GET['print_receipt'] ?? '');
 ?>
 
 <div id="page-content-wrapper">
@@ -113,6 +172,17 @@ try {
         <?php displayFlashMessage(); ?>
         <?php if (!empty($error)): ?><div class="alert alert-danger"><?= sanitize($error) ?></div><?php endif; ?>
 
+        <?php if (!empty($printReceiptNo)): ?>
+            <div class="alert alert-success d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <i class="bi bi-check-circle-fill me-2"></i> Sale recorded! Receipt ID: <strong><?= $printReceiptNo ?></strong>
+                </div>
+                <a href="pharmacy-receipt.php?receipt_no=<?= urlencode($printReceiptNo) ?>" target="_blank" class="btn btn-sm btn-success fw-bold rounded-pill px-3">
+                    <i class="bi bi-printer me-1"></i> Print Receipt Now
+                </a>
+            </div>
+        <?php endif; ?>
+
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
                 <h2 class="fw-bold mb-0">Pharmacy Point of Sale (POS)</h2>
@@ -121,7 +191,6 @@ try {
         </div>
 
         <div class="row g-4">
-            <!-- Left Side: POS Checkout Form -->
             <div class="col-lg-7">
                 <div class="card border-0 shadow-sm rounded-4">
                     <div class="card-header bg-white py-3 border-0">
@@ -172,15 +241,14 @@ try {
                                 </div>
                             </div>
 
-                            <!-- Calculation Display -->
                             <div class="p-3 bg-light rounded-3 mb-4">
                                 <div class="d-flex justify-content-between align-items-center mb-1">
                                     <span class="text-muted">Unit Price:</span>
-                                    <span class="fw-bold" id="unit_price_text">$0.00</span>
+                                    <span class="fw-bold" id="unit_price_text">NPR 0.00</span>
                                 </div>
                                 <div class="d-flex justify-content-between align-items-center">
                                     <span class="fw-bold fs-5 text-dark">Total Amount Due:</span>
-                                    <span class="fw-bold fs-4 text-success" id="total_amount_text">$0.00</span>
+                                    <span class="fw-bold fs-4 text-success" id="total_amount_text">NPR 0.00</span>
                                 </div>
                             </div>
 
@@ -192,11 +260,10 @@ try {
                 </div>
             </div>
 
-            <!-- Right Side: Quick Inventory Look-up -->
             <div class="col-lg-5">
                 <div class="card border-0 shadow-sm rounded-4">
                     <div class="card-header bg-white py-3 border-0">
-                        <h5 class="fw-bold mb-0 text-secondary"><i class="bi bi-box-seam me-2"></i>Quick Stock Look-up</h5>
+                        <h5 class="fw-bold mb-0 text-secondary"><i class="bi bi-box-seam me-2"></i>Pharmacy Stock List</h5>
                     </div>
                     <div class="card-body p-0">
                         <div class="table-responsive" style="max-height: 420px; overflow-y: auto;">
@@ -242,8 +309,8 @@ document.addEventListener('DOMContentLoaded', function() {
     function updateCalculations() {
         const selectedOption = medSelect.options[medSelect.selectedIndex];
         if (!selectedOption || !selectedOption.value) {
-            unitPriceTxt.textContent = '$0.00';
-            totalAmountTxt.textContent = '$0.00';
+            unitPriceTxt.textContent = 'NPR 0.00';
+            totalAmountTxt.textContent = 'NPR 0.00';
             return;
         }
 
@@ -251,12 +318,16 @@ document.addEventListener('DOMContentLoaded', function() {
         const qty   = parseInt(qtyInput.value) || 1;
         const total = price * qty;
 
-        unitPriceTxt.textContent = '$' + price.toFixed(2);
-        totalAmountTxt.textContent = '$' + total.toFixed(2);
+        unitPriceTxt.textContent = 'NPR ' + price.toFixed(2);
+        totalAmountTxt.textContent = 'NPR ' + total.toFixed(2);
     }
 
     medSelect.addEventListener('change', updateCalculations);
     qtyInput.addEventListener('input', updateCalculations);
+
+    <?php if (!empty($printReceiptNo)): ?>
+        window.open('pharmacy-receipt.php?receipt_no=<?= urlencode($printReceiptNo) ?>', '_blank');
+    <?php endif; ?>
 });
 </script>
 

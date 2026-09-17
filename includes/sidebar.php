@@ -5,37 +5,43 @@ $role = $user['role'] ?? '';
 $currentScript = basename($_SERVER['PHP_SELF']);
 ?>
 
-<!-- Scoped Sidebar Scrolling & Layout Styles -->
+<!-- Scoped CSS: Fixed Scrollable Sidebar with No Layout Gaps -->
 <style>
 #sidebar-wrapper {
     width: 250px !important;
     min-width: 250px !important;
     max-width: 250px !important;
     height: 100vh !important;
-    position: sticky !important;
+    position: fixed !important;
     top: 0 !important;
+    left: 0 !important;
+    z-index: 1000 !important;
     overflow-y: auto !important;
     overflow-x: hidden !important;
     scrollbar-width: thin;
     scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
 }
 
-/* Chrome, Edge, Safari Scrollbar Customization */
+/* Chrome, Edge, Safari Custom Slim Scrollbar */
 #sidebar-wrapper::-webkit-scrollbar {
     width: 5px;
 }
-
 #sidebar-wrapper::-webkit-scrollbar-track {
     background: transparent;
 }
-
 #sidebar-wrapper::-webkit-scrollbar-thumb {
     background: rgba(255, 255, 255, 0.2);
     border-radius: 3px;
 }
-
 #sidebar-wrapper::-webkit-scrollbar-thumb:hover {
     background: rgba(255, 255, 255, 0.4);
+}
+
+/* Push Main Page Content Right so it doesn't overlap the Fixed Sidebar */
+#page-content-wrapper {
+    margin-left: 250px !important;
+    width: calc(100% - 250px) !important;
+    min-height: 100vh !important;
 }
 
 #sidebar-wrapper .list-group-item {
@@ -50,7 +56,7 @@ $currentScript = basename($_SERVER['PHP_SELF']);
 }
 </style>
 
-<div id="sidebar-wrapper" class="bg-dark text-white border-end shadow-sm flex-shrink-0">
+<div id="sidebar-wrapper" class="bg-dark text-white border-end shadow-sm">
     <div class="sidebar-heading d-flex align-items-center p-3 border-bottom border-secondary">
         <i class="bi bi-heart-pulse-fill text-primary me-2 fs-4"></i>
         <span class="fw-bold text-white fs-5">CarePlus HMS</span>

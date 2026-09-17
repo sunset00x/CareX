@@ -11,39 +11,70 @@ requireRole(['admin', 'laboratory']);
 $db = Database::getConnection();
 $error = '';
 
-// ACTION HANDLER: UPDATE TEST STATUS & LOG RESULTS
+// ACTION HANDLER: REGISTER SPECIMEN, UPDATE STATUS, LOG RESULTS
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && verifyCSRFToken($_POST['csrf_token'] ?? '')) {
     $action = sanitize($_POST['action'] ?? '');
-    $orderId = (int)($_POST['order_id'] ?? 0);
 
-    if ($orderId > 0) {
-        if ($action === 'update_status') {
-            $newStatus = sanitize($_POST['status'] ?? 'In Testing');
-            $stmt = $db->prepare("UPDATE lab_test_orders SET status = ? WHERE id = ?");
-            $stmt->execute([$newStatus, $orderId]);
-            setFlashMessage('success', "Sample status updated to {$newStatus}.");
-        } elseif ($action === 'submit_results') {
-            $resultVal = sanitize($_POST['result_value'] ?? '');
-            $refRange  = sanitize($_POST['reference_range'] ?? '');
-            $isCritical = isset($_POST['is_critical']) ? 1 : 0;
-            $techNotes  = sanitize($_POST['technician_notes'] ?? '');
+    // 1. REGISTER NEW SPECIMEN
+    if ($action === 'register_specimen') {
+        $patientId  = (int)($_POST['patient_id'] ?? 0);
+        $doctorId   = (int)($_POST['doctor_id'] ?? 0);
+        $category   = sanitize($_POST['test_category'] ?? 'Hematology');
+        $testName   = sanitize($_POST['test_name'] ?? '');
+        $sampleType = sanitize($_POST['sample_type'] ?? 'Whole Blood');
+        $urgency    = sanitize($_POST['urgency'] ?? 'Routine');
+        
+        // Auto-generate barcode string
+        $barcode = 'LAB-' . date('Ymd') . '-' . rand(1000, 9999);
 
-            $stmt = $db->prepare("
-                UPDATE lab_test_orders 
-                SET result_value = ?, 
-                    reference_range = ?, 
-                    is_critical = ?, 
-                    technician_notes = ?, 
-                    status = 'Completed', 
-                    verified_by_user_id = ?, 
-                    completed_at = NOW() 
-                WHERE id = ?
-            ");
-            $stmt->execute([$resultVal, $refRange, $isCritical, $techNotes, $_SESSION['user_id'], $orderId]);
-            setFlashMessage('success', "Diagnostic results verified and published to Patient EMR.");
+        if ($patientId > 0 && $doctorId > 0 && !empty($testName)) {
+            try {
+                $stmt = $db->prepare("
+                    INSERT INTO lab_test_orders 
+                    (sample_barcode, patient_id, doctor_id, test_category, test_name, sample_type, status, urgency) 
+                    VALUES (?, ?, ?, ?, ?, ?, 'Requested', ?)
+                ");
+                $stmt->execute([$barcode, $patientId, $doctorId, $category, $testName, $sampleType, $urgency]);
+
+                setFlashMessage('success', "Specimen registered successfully with barcode {$barcode}.");
+                header('Location: test-requests.php');
+                exit();
+            } catch (\Exception $e) {
+                $error = "Registration Error: " . $e->getMessage();
+            }
+        } else {
+            $error = "Please select a patient, doctor, and specify the test name.";
         }
-        header('Location: test-requests.php');
-        exit();
+    } 
+    // 2. SUBMIT RESULTS
+    elseif ($action === 'submit_results') {
+        $orderId    = (int)($_POST['order_id'] ?? 0);
+        $resultVal  = sanitize($_POST['result_value'] ?? '');
+        $refRange   = sanitize($_POST['reference_range'] ?? '');
+        $isCritical = isset($_POST['is_critical']) ? 1 : 0;
+        $techNotes  = sanitize($_POST['technician_notes'] ?? '');
+
+        if ($orderId > 0 && !empty($resultVal)) {
+            try {
+                $stmt = $db->prepare("
+                    UPDATE lab_test_orders 
+                    SET result_value = ?, 
+                        reference_range = ?, 
+                        is_critical = ?, 
+                        technician_notes = ?, 
+                        status = 'Completed', 
+                        verified_by_user_id = ?, 
+                        completed_at = NOW() 
+                    WHERE id = ?
+                ");
+                $stmt->execute([$resultVal, $refRange, $isCritical, $techNotes, $_SESSION['user_id'], $orderId]);
+                setFlashMessage('success', "Diagnostic results verified and published to Patient EMR.");
+                header('Location: test-requests.php');
+                exit();
+            } catch (\Exception $e) {
+                $error = "Result Logging Error: " . $e->getMessage();
+            }
+        }
     }
 }
 
@@ -65,6 +96,7 @@ $doctors  = $db->query("SELECT d.id, u.name FROM doctors d JOIN users u ON d.use
 
     <div class="container-fluid p-4">
         <?php displayFlashMessage(); ?>
+        <?php if ($error): ?><div class="alert alert-danger"><?= sanitize($error) ?></div><?php endif; ?>
 
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
@@ -126,7 +158,7 @@ $doctors  = $db->query("SELECT d.id, u.name FROM doctors d JOIN users u ON d.use
                                                 <i class="bi bi-pencil-square me-1"></i> Log Results
                                             </button>
                                         <?php else: ?>
-                                            <button class="btn btn-sm btn-success fw-bold rounded-pill" onclick="alert('Results verified by Tech #<?= $lab['verified_by_user_id'] ?> on <?= $lab['completed_at'] ?>')">
+                                            <button class="btn btn-sm btn-success fw-bold rounded-pill" onclick="alert('Results verified on <?= $lab['completed_at'] ?>')">
                                                 <i class="bi bi-check-circle me-1"></i> Verified
                                             </button>
                                         <?php endif; ?>
@@ -139,6 +171,87 @@ $doctors  = $db->query("SELECT d.id, u.name FROM doctors d JOIN users u ON d.use
                     </table>
                 </div>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Register New Specimen -->
+<div class="modal fade" id="newOrderModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-light border-0">
+                <h5 class="modal-title fw-bold"><i class="bi bi-plus-circle text-primary me-2"></i>Register New Specimen</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="test-requests.php" method="POST">
+                <div class="modal-body p-4">
+                    <input type="hidden" name="csrf_token" value="<?= generateCSRFToken() ?>">
+                    <input type="hidden" name="action" value="register_specimen">
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Patient *</label>
+                            <select name="patient_id" class="form-select" required>
+                                <option value="">Select Patient...</option>
+                                <?php foreach ($patients as $p): ?>
+                                    <option value="<?= $p['id'] ?>"><?= sanitize($p['name']) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Ordering Doctor *</label>
+                            <select name="doctor_id" class="form-select" required>
+                                <option value="">Select Physician...</option>
+                                <?php foreach ($doctors as $d): ?>
+                                    <option value="<?= $d['id'] ?>">Dr. <?= sanitize($d['name']) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Test Category *</label>
+                            <select name="test_category" class="form-select" required>
+                                <option value="Hematology">Hematology</option>
+                                <option value="Biochemistry">Biochemistry</option>
+                                <option value="Microbiology">Microbiology</option>
+                                <option value="Immunology">Immunology</option>
+                                <option value="Pathology">Pathology</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Test Name / Panel *</label>
+                            <input type="text" name="test_name" class="form-control" placeholder="e.g. Complete Blood Count (CBC), Lipid Profile" required>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Specimen / Sample Type</label>
+                            <select name="sample_type" class="form-select">
+                                <option value="Whole Blood">Whole Blood (EDTA)</option>
+                                <option value="Serum">Serum</option>
+                                <option value="Urine">Urine</option>
+                                <option value="Swab / Culture">Swab / Culture</option>
+                                <option value="Tissue Biopsy">Tissue Biopsy</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Priority Level</label>
+                            <select name="urgency" class="form-select">
+                                <option value="Routine">Routine</option>
+                                <option value="Urgent">Urgent</option>
+                                <option value="STAT Emergency">STAT Emergency</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 bg-light">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary fw-bold px-4">Register & Generate Barcode</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
@@ -170,7 +283,7 @@ $doctors  = $db->query("SELECT d.id, u.name FROM doctors d JOIN users u ON d.use
 
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Observed Result Value *</label>
-                        <textarea name="result_value" class="form-control" rows="2" placeholder="e.g. Hemoglobin: 14.2 g/dL | WBC: 7,500 /mcL | Platelets: 250,000 /mcL" required></textarea>
+                        <textarea name="result_value" class="form-control" rows="2" placeholder="e.g. Hemoglobin: 14.2 g/dL | WBC: 7,500 /mcL" required></textarea>
                     </div>
 
                     <div class="row g-3 mb-3">
@@ -190,7 +303,7 @@ $doctors  = $db->query("SELECT d.id, u.name FROM doctors d JOIN users u ON d.use
 
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Lab Technician Findings & Notes</label>
-                        <textarea name="technician_notes" class="form-control" rows="2" placeholder="Notes on sample quality, equipment calibration, or morphology..."></textarea>
+                        <textarea name="technician_notes" class="form-control" rows="2" placeholder="Notes on sample quality or equipment calibration..."></textarea>
                     </div>
                 </div>
                 <div class="modal-footer border-0 bg-light">

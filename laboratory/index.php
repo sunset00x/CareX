@@ -1,119 +1,68 @@
 <?php
 /**
- * Laboratory Dashboard Interface
+ * Laboratory Technician Main Dashboard
+ * CarePlus Smart Hospital Management System
  */
-$pageTitle = "Laboratory Worklist";
+$pageTitle = "Laboratory Dashboard";
 require_once __DIR__ . '/../includes/header.php';
 require_once __DIR__ . '/../includes/sidebar.php';
-requireRole('laboratory');
+requireRole(['admin', 'laboratory']);
 
-$user = currentUser();
 $db = Database::getConnection();
 
-// Fetch Pending and Completed Lab Statistics
-$stmtPending = $db->query("SELECT COUNT(*) FROM lab_tests WHERE status IN ('Pending', 'In-Progress')");
-$countPending = $stmtPending->fetchColumn();
-
-$stmtCompleted = $db->query("SELECT COUNT(*) FROM lab_tests WHERE status = 'Completed'");
-$countCompleted = $stmtCompleted->fetchColumn();
-
-// Fetch Lab Test Worklist Requests
-$stmtWorklist = $db->query("
-    SELECT lt.*, u_pat.name as patient_name, u_doc.name as doctor_name, p.patient_id as patient_code
-    FROM lab_tests lt
-    JOIN patients p ON lt.patient_id = p.id
-    JOIN users u_pat ON p.user_id = u_pat.id
-    JOIN doctors d ON lt.doctor_id = d.id
-    JOIN users u_doc ON d.user_id = u_doc.id
-    ORDER BY lt.requested_at DESC
-");
-$worklist = $stmtWorklist->fetchAll();
+// Metrics
+$pendingCount = $db->query("SELECT COUNT(*) FROM lab_test_orders WHERE status IN ('Requested', 'Sample Collected', 'In Testing')")->fetchColumn();
+$completedToday = $db->query("SELECT COUNT(*) FROM lab_test_orders WHERE status = 'Completed' AND DATE(completed_at) = CURDATE()")->fetchColumn();
+$criticalCount = $db->query("SELECT COUNT(*) FROM lab_test_orders WHERE is_critical = 1 AND status = 'Completed'")->fetchColumn();
 ?>
 
 <div id="page-content-wrapper">
     <?php require_once __DIR__ . '/../includes/navbar.php'; ?>
 
     <div class="container-fluid p-4">
-        <?php displayFlashMessage(); ?>
-
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
-                <h2 class="fw-bold mb-0">Laboratory Worklist & Diagnostics</h2>
-                <p class="text-muted">Process laboratory orders and upload diagnostic findings.</p>
+                <h2 class="fw-bold mb-0">Laboratory Control Console</h2>
+                <p class="text-muted mb-0">Diagnostic analytics, STAT queue tracking, and specimen logs.</p>
             </div>
+            <a href="test-requests.php" class="btn btn-primary fw-bold rounded-pill px-4">
+                <i class="bi bi-list-task me-1"></i> Open Lab Worklist
+            </a>
         </div>
 
-        <div class="row g-3 mb-4">
-            <div class="col-md-6">
-                <div class="card card-kpi p-3 bg-white">
-                    <div class="d-flex align-items-center">
-                        <div class="kpi-icon bg-warning-subtle text-warning me-3"><i class="bi bi-hourglass-split"></i></div>
+        <!-- Metrics Cards -->
+        <div class="row g-4 mb-4">
+            <div class="col-md-4">
+                <div class="card border-0 shadow-sm rounded-4 p-3 bg-primary text-white">
+                    <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <h3 class="fw-bold mb-0"><?= $countPending ?></h3>
-                            <small class="text-muted fw-semibold">Pending / Active Tests</small>
+                            <h6 class="text-white-50 text-uppercase fw-bold mb-1">Active Test Queue</h6>
+                            <h2 class="display-5 fw-bold mb-0"><?= $pendingCount ?></h2>
                         </div>
+                        <i class="bi bi-hourglass-split display-4 opacity-50"></i>
                     </div>
                 </div>
             </div>
-            <div class="col-md-6">
-                <div class="card card-kpi p-3 bg-white">
-                    <div class="d-flex align-items-center">
-                        <div class="kpi-icon bg-success-subtle text-success me-3"><i class="bi bi-check-circle"></i></div>
+            <div class="col-md-4">
+                <div class="card border-0 shadow-sm rounded-4 p-3 bg-success text-white">
+                    <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <h3 class="fw-bold mb-0"><?= $countCompleted ?></h3>
-                            <small class="text-muted fw-semibold">Completed Reports</small>
+                            <h6 class="text-white-50 text-uppercase fw-bold mb-1">Completed Today</h6>
+                            <h2 class="display-5 fw-bold mb-0"><?= $completedToday ?></h2>
                         </div>
+                        <i class="bi bi-check-circle-fill display-4 opacity-50"></i>
                     </div>
                 </div>
             </div>
-        </div>
-
-        <div class="card border-0 shadow-sm rounded-4">
-            <div class="card-header bg-white py-3">
-                <h5 class="fw-bold mb-0">Laboratory Test Orders</h5>
-            </div>
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Test Order #</th>
-                                <th>Patient</th>
-                                <th>Ordering Doctor</th>
-                                <th>Test Name</th>
-                                <th>Priority</th>
-                                <th>Status</th>
-                                <th>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php if (!empty($worklist)): foreach ($worklist as $row): ?>
-                                <tr>
-                                    <td class="fw-bold text-primary"><?= sanitize($row['test_number']) ?></td>
-                                    <td><?= sanitize($row['patient_name']) ?> <small class="text-muted">(<?= sanitize($row['patient_code']) ?>)</small></td>
-                                    <td><?= sanitize($row['doctor_name']) ?></td>
-                                    <td class="fw-semibold"><?= sanitize($row['test_name']) ?></td>
-                                    <td>
-                                        <span class="badge bg-<?= $row['priority'] == 'Urgent' ? 'danger' : ($row['priority'] == 'High' ? 'warning' : 'secondary') ?>">
-                                            <?= sanitize($row['priority']) ?>
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <span class="badge bg-<?= $row['status'] == 'Completed' ? 'success' : 'info' ?>">
-                                            <?= sanitize($row['status']) ?>
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <a href="test-requests.php?id=<?= $row['id'] ?>" class="btn btn-sm btn-outline-primary">Process Test</a>
-                                    </td>
-                                </tr>
-                            <?php endforeach; else: ?>
-                                <tr>
-                                    <td colspan="7" class="text-center py-4 text-muted">No diagnostic laboratory orders in queue.</td>
-                                </tr>
-                            <?php endif; ?>
-                        </tbody>
-                    </table>
+            <div class="col-md-4">
+                <div class="card border-0 shadow-sm rounded-4 p-3 bg-danger text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-white-50 text-uppercase fw-bold mb-1">Critical Panic Values</h6>
+                            <h2 class="display-5 fw-bold mb-0"><?= $criticalCount ?></h2>
+                        </div>
+                        <i class="bi bi-exclamation-diamond-fill display-4 opacity-50"></i>
+                    </div>
                 </div>
             </div>
         </div>

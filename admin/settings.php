@@ -1,4 +1,5 @@
 <?php
+ob_start();
 /**
  * Admin System Settings & Branding Console
  */
@@ -20,21 +21,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $address  = sanitize($_POST['address'] ?? '');
         $currency = sanitize($_POST['currency_symbol'] ?? 'NPR');
 
-        $stmtUpd = $db->prepare("
-            UPDATE system_settings 
-            SET hospital_name = ?, tagline = ?, emergency_phone = ?, email = ?, address = ?, currency_symbol = ?
-            WHERE id = 1
-        ");
-        $stmtUpd->execute([$name, $tagline, $phone, $email, $address, $currency]);
+        try {
+            $stmtUpd = $db->prepare("
+                INSERT INTO system_settings (id, hospital_name, tagline, emergency_phone, email, address, currency_symbol)
+                VALUES (1, ?, ?, ?, ?, ?, ?)
+                ON DUPLICATE KEY UPDATE
+                    hospital_name = VALUES(hospital_name),
+                    tagline = VALUES(tagline),
+                    emergency_phone = VALUES(emergency_phone),
+                    email = VALUES(email),
+                    address = VALUES(address),
+                    currency_symbol = VALUES(currency_symbol)
+            ");
+            $stmtUpd->execute([$name, $tagline, $phone, $email, $address, $currency]);
 
-        logAudit($_SESSION['user_id'], "Updated System Hospital Branding Settings", 'Settings');
-        setFlashMessage('success', 'System settings updated successfully.');
-        header('Location: settings.php');
-        exit();
+            logAudit($_SESSION['user_id'], "Updated System Hospital Branding Settings", 'Settings');
+            setFlashMessage('success', 'System settings updated successfully.');
+            header('Location: settings.php');
+            exit();
+        } catch (\PDOException $e) {
+            $error = "Failed to update settings: " . $e->getMessage();
+        }
+    } else {
+        $error = "CSRF Token Validation Failed.";
     }
 }
 
-$settings = $db->query("SELECT * FROM system_settings WHERE id = 1")->fetch();
+try {
+    $settings = $db->query("SELECT * FROM system_settings WHERE id = 1")->fetch();
+} catch (\PDOException $e) {
+    $settings = [];
+}
 ?>
 
 <div id="page-content-wrapper">
@@ -42,6 +59,7 @@ $settings = $db->query("SELECT * FROM system_settings WHERE id = 1")->fetch();
 
     <div class="container-fluid p-4">
         <?php displayFlashMessage(); ?>
+        <?php if (!empty($error)): ?><div class="alert alert-danger"><?= sanitize($error) ?></div><?php endif; ?>
 
         <div class="row justify-content-center">
             <div class="col-md-8">
@@ -94,4 +112,7 @@ $settings = $db->query("SELECT * FROM system_settings WHERE id = 1")->fetch();
     </div>
 </div>
 
-<?php require_once __DIR__ . '/../includes/footer.php'; ?>
+<?php 
+require_once __DIR__ . '/../includes/footer.php'; 
+ob_end_flush();
+?>

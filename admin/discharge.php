@@ -102,7 +102,8 @@ $summaries = $db->query("
                                     <td><small><?= formatDate($s['admission_date']) ?> &rarr; <?= formatDate($s['discharge_date']) ?></small></td>
                                     <td><?= sanitize($s['final_diagnosis']) ?></td>
                                     <td>
-                                        <button class="btn btn-sm btn-outline-primary fw-bold rounded-pill" onclick="alert('<?= addslashes(sanitize($s['treatment_summary'])) ?>')">
+                                        <button class="btn btn-sm btn-outline-primary fw-bold rounded-pill" 
+                                                onclick='openPrintModal(<?= json_encode($s, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>)'>
                                             <i class="bi bi-printer me-1"></i> Print Summary
                                         </button>
                                     </td>
@@ -193,5 +194,90 @@ $summaries = $db->query("
         </div>
     </div>
 </div>
+
+<!-- Modal: Printable Summary View -->
+<div class="modal fade" id="printModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-light border-0">
+                <h5 class="modal-title fw-bold"><i class="bi bi-printer text-primary me-2"></i>Patient Discharge Letter</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4" id="printableArea">
+                <div class="text-center mb-4 pb-3 border-bottom">
+                    <h3 class="fw-bold mb-1 text-primary">CarePlus Smart Hospital</h3>
+                    <p class="text-muted small mb-0">Official Patient Clinical Discharge Summary</p>
+                </div>
+
+                <div class="row g-3 mb-4">
+                    <div class="col-6">
+                        <strong>Patient Name:</strong> <span id="print_patient_name" class="text-dark"></span>
+                    </div>
+                    <div class="col-6 text-end">
+                        <strong>Attending Physician:</strong> Dr. <span id="print_doctor_name" class="text-dark"></span>
+                    </div>
+                    <div class="col-6">
+                        <strong>Admission Date:</strong> <span id="print_admission_date"></span>
+                    </div>
+                    <div class="col-6 text-end">
+                        <strong>Discharge Date:</strong> <span id="print_discharge_date"></span>
+                    </div>
+                </div>
+
+                <div class="mb-3 p-3 bg-light rounded border">
+                    <strong class="d-block text-uppercase text-muted small">Final Clinical Diagnosis</strong>
+                    <div id="print_final_diagnosis" class="fw-bold text-dark fs-5"></div>
+                </div>
+
+                <div class="mb-3">
+                    <strong class="d-block text-uppercase text-muted small">Hospital Treatment Summary</strong>
+                    <p id="print_treatment_summary" class="mb-0 text-dark"></p>
+                </div>
+
+                <div class="mb-3">
+                    <strong class="d-block text-uppercase text-muted small">Discharge Medications (Rx)</strong>
+                    <p id="print_discharge_medications" class="mb-0 text-dark fw-semibold"></p>
+                </div>
+
+                <div class="mb-3">
+                    <strong class="d-block text-uppercase text-muted small">Follow-up Instructions</strong>
+                    <p id="print_follow_up" class="mb-0 text-dark"></p>
+                </div>
+            </div>
+            <div class="modal-footer border-0 bg-light">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary fw-bold px-4" onclick="triggerPrint()">
+                    <i class="bi bi-printer me-1"></i> Print Document
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function openPrintModal(data) {
+    document.getElementById('print_patient_name').innerText = data.patient_name || 'N/A';
+    document.getElementById('print_doctor_name').innerText = data.doctor_name || 'N/A';
+    document.getElementById('print_admission_date').innerText = data.admission_date || 'N/A';
+    document.getElementById('print_discharge_date').innerText = data.discharge_date || 'N/A';
+    document.getElementById('print_final_diagnosis').innerText = data.final_diagnosis || 'N/A';
+    document.getElementById('print_treatment_summary').innerText = data.treatment_summary || 'None recorded';
+    document.getElementById('print_discharge_medications').innerText = data.discharge_medications || 'None prescribed';
+    document.getElementById('print_follow_up').innerText = data.follow_up_instructions || 'None provided';
+
+    var printModal = new bootstrap.Modal(document.getElementById('printModal'));
+    printModal.show();
+}
+
+function triggerPrint() {
+    var printContents = document.getElementById('printableArea').innerHTML;
+    var originalContents = document.body.innerHTML;
+
+    document.body.innerHTML = printContents;
+    window.print();
+    document.body.innerHTML = originalContents;
+    window.location.reload();
+}
+</script>
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>

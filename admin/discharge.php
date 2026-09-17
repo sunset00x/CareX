@@ -71,8 +71,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && verifyCSRFToken($_POST['csrf_token'
         $error = "Please select a patient and fill in the final diagnosis.";
     }
 }
-
-$patients  = $db->query("SELECT p.id, u.name, p.dob, p.gender, p.blood_group FROM patients p JOIN users u ON p.user_id = u.id ORDER BY u.name ASC")->fetchAll();
+// Safe query handling optional patient demographic fields
+$patients = $db->query("
+    SELECT p.id, u.name, 
+           COALESCE(u.email, 'N/A') as email,
+           COALESCE(p.blood_group, 'N/A') as blood_group, 
+           COALESCE(p.gender, 'N/A') as gender 
+    FROM patients p 
+    JOIN users u ON p.user_id = u.id 
+    ORDER BY u.name ASC
+")->fetchAll();
 $doctors   = $db->query("SELECT d.id, u.name, d.specialization FROM doctors d JOIN users u ON d.user_id = u.id ORDER BY u.name ASC")->fetchAll();
 $beds      = $db->query("SELECT id, bed_number, ward_type FROM hospital_beds WHERE status = 'Occupied'")->fetchAll();
 $summaries = $db->query("

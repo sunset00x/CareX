@@ -1,9 +1,6 @@
 <?php
 ob_start();
-/**
- * Admin / Staff - Pharmacy Point of Sale (POS) & Dispensing
- * CarePlus Smart Hospital Management System
- */
+
 $pageTitle = "Pharmacy POS & Dispensing";
 require_once __DIR__ . '/../includes/header.php';
 require_once __DIR__ . '/../includes/sidebar.php';
@@ -12,9 +9,6 @@ requireRole(['admin', 'pharmacist']);
 $db = Database::getConnection();
 $error = '';
 
-// ==========================================
-// FORM ACTION HANDLERS (POST)
-// ==========================================
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = sanitize($_POST['action'] ?? '');
     $token  = $_POST['csrf_token'] ?? '';
@@ -25,7 +19,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // PROCESS PHARMACY SALE / DISPENSE
         if ($action === 'process_sale') {
-            $patientId = (int)($_POST['patient_id'] ?? 0);
+            $patientId  = (int)($_POST['patient_id'] ?? 0);
             $medicineId = (int)($_POST['medicine_id'] ?? 0);
             $quantity   = (int)($_POST['quantity'] ?? 0);
             $payMethod  = sanitize($_POST['payment_method'] ?? 'Cash');
@@ -57,7 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $stmtDeduct = $db->prepare("UPDATE pharmacy_inventory SET stock_quantity = GREATEST(0, stock_quantity - ?) WHERE id = ?");
                     $stmtDeduct->execute([$quantity, $medicineId]);
 
-                    // 3. Optional: Create Patient Invoice if patient assigned
+                    // 3. Create Patient Invoice if patient assigned
                     if ($patientId > 0) {
                         $invNum = 'PHARM-' . date('Ymd') . '-' . rand(1000, 9999);
                         $stmtInv = $db->prepare("INSERT INTO invoices (invoice_number, patient_id, total_amount, status) VALUES (?, ?, ?, 'Paid')");
@@ -81,15 +75,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Fetch Active Medicines in Stock
+// ==========================================
+// SAFE FETCH ALL MEDICINES FOR DROPDOWN
+// ==========================================
+$medicines = [];
 try {
     $medicines = $db->query("
         SELECT *, 
-               COALESCE(brand_name, medicine_name, 'Unknown') as display_name,
+               COALESCE(brand_name, medicine_name, 'Medicine') as display_name,
                COALESCE(stock_quantity, quantity, 0) as display_stock,
                COALESCE(unit_price, price, 0.00) as display_price
         FROM pharmacy_inventory 
-        WHERE COALESCE(stock_quantity, quantity, 0) > 0 
         ORDER BY display_name ASC
     ")->fetchAll();
 } catch (\PDOException $e) {
@@ -97,12 +93,17 @@ try {
 }
 
 // Fetch Active Patients
-$patients = $db->query("
-    SELECT p.id, u.name 
-    FROM patients p 
-    JOIN users u ON p.user_id = u.id 
-    ORDER BY u.name ASC
-")->fetchAll();
+$patients = [];
+try {
+    $patients = $db->query("
+        SELECT p.id, u.name 
+        FROM patients p 
+        JOIN users u ON p.user_id = u.id 
+        ORDER BY u.name ASC
+    ")->fetchAll();
+} catch (\PDOException $e) {
+    $patients = [];
+}
 ?>
 
 <div id="page-content-wrapper">
@@ -145,13 +146,15 @@ $patients = $db->query("
                                 <label class="form-label fw-semibold">Select Medicine / Product *</label>
                                 <select name="medicine_id" id="medicine_select" class="form-select" required>
                                     <option value="">Choose medicine stock...</option>
-                                    <?php foreach ($medicines as $m): ?>
+                                    <?php if (!empty($medicines)): foreach ($medicines as $m): ?>
                                         <option value="<?= $m['id'] ?>" 
                                                 data-price="<?= $m['display_price'] ?>" 
                                                 data-stock="<?= $m['display_stock'] ?>">
                                             <?= sanitize($m['display_name']) ?> — <?= formatCurrency($m['display_price']) ?> (Stock: <?= $m['display_stock'] ?>)
                                         </option>
-                                    <?php endforeach; ?>
+                                    <?php endforeach; else: ?>
+                                        <option value="" disabled>No medicines found in inventory</option>
+                                    <?php endif; ?>
                                 </select>
                             </div>
 
@@ -189,7 +192,7 @@ $patients = $db->query("
                 </div>
             </div>
 
-            <!-- Right Side: Quick Inventory Status -->
+            <!-- Right Side: Quick Inventory Look-up -->
             <div class="col-lg-5">
                 <div class="card border-0 shadow-sm rounded-4">
                     <div class="card-header bg-white py-3 border-0">
@@ -217,7 +220,7 @@ $patients = $db->query("
                                             <td class="text-end pe-3 fw-bold text-success"><?= formatCurrency($m['display_price']) ?></td>
                                         </tr>
                                     <?php endforeach; else: ?>
-                                        <tr><td colspan="3" class="text-center py-4 text-muted">No medicines available.</td></tr>
+                                        <tr><td colspan="3" class="text-center py-4 text-muted">No medicines registered in inventory.</td></tr>
                                     <?php endif; ?>
                                 </tbody>
                             </table>

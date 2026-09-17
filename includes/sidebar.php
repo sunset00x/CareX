@@ -4,17 +4,57 @@ $user = currentUser();
 $role = $user['role'] ?? '';
 $currentScript = basename($_SERVER['PHP_SELF']);
 ?>
-<div id="sidebar-wrapper" class="bg-dark text-white border-end shadow-sm d-flex flex-column" style="width: 250px; min-width: 250px; height: 100vh; position: sticky; top: 0; overflow-y: auto;">
+
+<!-- Scoped Sidebar Styles -->
+<style>
+/* Custom Scrollbar and Layout Fix for Sidebar */
+#sidebar-wrapper {
+    width: 250px !important;
+    min-width: 250px !important;
+    max-width: 250px !important;
+    height: 100vh !important;
+    position: sticky !important;
+    top: 0 !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+#sidebar-wrapper::-webkit-scrollbar {
+    width: 5px;
+}
+
+#sidebar-wrapper::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+#sidebar-wrapper::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+}
+
+#sidebar-wrapper::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.4);
+}
+
+#sidebar-wrapper .list-group-item {
+    border: none !important;
+    border-radius: 0 !important;
+}
+</style>
+
+<div id="sidebar-wrapper" class="bg-dark text-white border-end shadow-sm flex-shrink-0">
     <div class="sidebar-heading d-flex align-items-center p-3 border-bottom border-secondary">
         <i class="bi bi-heart-pulse-fill text-primary me-2 fs-4"></i>
         <span class="fw-bold text-white fs-5">CarePlus HMS</span>
     </div>
     
-    <div class="list-group list-group-flush py-0 flex-grow-1">
+    <div class="list-group list-group-flush py-0">
         <?php if ($role === 'admin'): ?>
             <a href="<?= BASE_URL ?>admin/index.php" class="list-group-item <?= $currentScript == 'index.php' ? 'active' : '' ?>"><i class="bi bi-speedometer2 me-2"></i>Dashboard</a>
             <a href="<?= BASE_URL ?>admin/departments.php" class="list-group-item <?= $currentScript == 'departments.php' ? 'active' : '' ?>"><i class="bi bi-building me-2"></i>Departments</a>
-            <a href="<?= BASE_URL ?>admin/doctors.php" class="list-group-item <?= $currentScript == 'doctors.php' ? 'active' : '' ?>"><i class="bi bi-person-md me-2"></i>Doctors</a>
+            <a href="<?= BASE_URL ?>admin/doctors.php" class="list-group-item <?= $currentScript == 'doctors.php' ? 'active' : '' ?>"><i class="bi bi-person-badge me-2"></i>Doctors</a>
             <a href="<?= BASE_URL ?>admin/patients.php" class="list-group-item <?= $currentScript == 'patients.php' ? 'active' : '' ?>"><i class="bi bi-people me-2"></i>Patients</a>
             <a href="<?= BASE_URL ?>admin/users.php" class="list-group-item <?= $currentScript == 'users.php' ? 'active' : '' ?>"><i class="bi bi-shield-lock me-2"></i>Users & Roles</a>
             <a href="<?= BASE_URL ?>admin/appointments.php" class="list-group-item <?= $currentScript == 'appointments.php' ? 'active' : '' ?>"><i class="bi bi-calendar-check me-2"></i>Appointments</a>

@@ -7,35 +7,14 @@ $currentScript = basename($_SERVER['PHP_SELF']);
 
 <!-- Scoped Sidebar Styles -->
 <style>
-/* Custom Scrollbar and Layout Fix for Sidebar */
+/* Clean layout fix without scrollbar conflict */
 #sidebar-wrapper {
     width: 250px !important;
     min-width: 250px !important;
     max-width: 250px !important;
-    height: 100vh !important;
-    position: sticky !important;
-    top: 0 !important;
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
-}
-
-#sidebar-wrapper::-webkit-scrollbar {
-    width: 5px;
-}
-
-#sidebar-wrapper::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-#sidebar-wrapper::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.2);
-    border-radius: 3px;
-}
-
-#sidebar-wrapper::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.4);
+    min-height: 100vh !important;
+    margin: 0 !important;
+    padding: 0 !important;
 }
 
 #sidebar-wrapper .list-group-item {

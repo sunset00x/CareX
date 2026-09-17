@@ -10,7 +10,7 @@
                     <div class="bg-primary text-white rounded-circle p-2 me-2 d-flex align-items-center justify-content-center" style="width:40px; height:40px;">
                         <i class="bi bi-heart-pulse-fill fs-5"></i>
                     </div>
-                    <h4 class="fw-bold mb-0 text-white"><?= sanitize($hospName ?? 'CarePlus Hospital') ?></h4>
+                    <h4 class="fw-bold mb-0 text-white"><?= sanitize($hospName ?? 'CareX Hospital') ?></h4>
                 </div>
                 <p class="text-secondary small mb-3">
                     Comprehensive healthcare management platform providing digital appointments, specialist doctor directory, laboratory testing, and emergency admissions.
@@ -52,7 +52,7 @@
                     <h5 class="fw-bold text-white mb-0"><?= sanitize($sysSettings['emergency_phone'] ?? '+977-9800000000') ?></h5>
                 </div>
                 <p class="text-secondary small mb-1"><i class="bi bi-geo-alt me-2 text-primary"></i><?= sanitize($sysSettings['address'] ?? 'Biratnagar-4, Koshi Province, Nepal') ?></p>
-                <p class="text-secondary small"><i class="bi bi-envelope me-2 text-primary"></i><?= sanitize($sysSettings['email'] ?? 'info@careplus.test') ?></p>
+                <p class="text-secondary small"><i class="bi bi-envelope me-2 text-primary"></i><?= sanitize($sysSettings['email'] ?? 'info@CareX.test') ?></p>
             </div>
         </div>
 
@@ -60,7 +60,7 @@
 
         <div class="row align-items-center">
             <div class="col-md-6 text-center text-md-start">
-                <p class="small text-secondary mb-0">&copy; <?= date('Y') ?> <strong><?= sanitize($hospName ?? 'CarePlus Hospital') ?></strong>. All rights reserved.</p>
+                <p class="small text-secondary mb-0">&copy; <?= date('Y') ?> <strong><?= sanitize($hospName ?? 'CareX Hospital') ?></strong>. All rights reserved.</p>
             </div>
             <div class="col-md-6 text-center text-md-end mt-2 mt-md-0">
                 <span class="badge bg-success-subtle text-success border border-success me-2">System Status: Operational</span>

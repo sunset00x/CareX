@@ -1,7 +1,7 @@
 <?php
 /**
  * Admin / Doctor - Comprehensive Patient Discharge Engine
- * CarePlus Smart Hospital Management System
+ * CareX Smart Hospital Management System
  */
 $pageTitle = "Patient Discharge Summarizer";
 require_once __DIR__ . '/../includes/header.php';
@@ -13,7 +13,7 @@ $error = '';
 
 // Fetch System Settings for Dynamic Branding
 $sysSettings = $db->query("SELECT * FROM system_settings WHERE id = 1")->fetch() ?: [];
-$hospName    = $sysSettings['hospital_name'] ?? 'CarePlus Smart Hospital';
+$hospName    = $sysSettings['hospital_name'] ?? 'CareX Smart Hospital';
 $hospPhone   = $sysSettings['emergency_phone'] ?? '+977-9800000000';
 $hospAddress = $sysSettings['address'] ?? 'Biratnagar-4, Koshi Province, Nepal';
 

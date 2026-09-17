@@ -33,13 +33,13 @@ INSERT INTO `departments` (`id`, `name`, `description`, `status`) VALUES
 
 -- 2. Insert Base Users
 INSERT INTO `users` (`id`, `name`, `email`, `password`, `role`, `phone`, `status`) VALUES
-(1, 'System Administrator', 'admin@careplus.test', '$2y$10$e0MYzXyjpJS7Pd0RVvHwHe1n4V8kH/Yc/.HhA00.jG.yG/Lg21a0G', 'admin', '+977-9800000001', 'active'),
-(2, 'Dr. Anish Sharma', 'doctor@careplus.test', '$2y$10$e0MYzXyjpJS7Pd0RVvHwHe1n4V8kH/Yc/.HhA00.jG.yG/Lg21a0G', 'doctor', '+977-9800000002', 'active'),
-(3, 'Dr. Sunita Rai', 'sunita.rai@careplus.test', '$2y$10$e0MYzXyjpJS7Pd0RVvHwHe1n4V8kH/Yc/.HhA00.jG.yG/Lg21a0G', 'doctor', '+977-9800000003', 'active'),
-(4, 'Aarav Patel', 'patient@careplus.test', '$2y$10$e0MYzXyjpJS7Pd0RVvHwHe1n4V8kH/Yc/.HhA00.jG.yG/Lg21a0G', 'patient', '+977-9800000004', 'active'),
-(5, 'Bina Thapa', 'bina.patient@careplus.test', '$2y$10$e0MYzXyjpJS7Pd0RVvHwHe1n4V8kH/Yc/.HhA00.jG.yG/Lg21a0G', 'patient', '+977-9800000005', 'active'),
-(6, 'Ramesh Technician', 'lab@careplus.test', '$2y$10$e0MYzXyjpJS7Pd0RVvHwHe1n4V8kH/Yc/.HhA00.jG.yG/Lg21a0G', 'laboratory', '+977-9800000006', 'active'),
-(7, 'Sita Billing Manager', 'billing@careplus.test', '$2y$10$e0MYzXyjpJS7Pd0RVvHwHe1n4V8kH/Yc/.HhA00.jG.yG/Lg21a0G', 'billing', '+977-9800000007', 'active');
+(1, 'System Administrator', 'admin@CareX.test', '$2y$10$e0MYzXyjpJS7Pd0RVvHwHe1n4V8kH/Yc/.HhA00.jG.yG/Lg21a0G', 'admin', '+977-9800000001', 'active'),
+(2, 'Dr. Anish Sharma', 'doctor@CareX.test', '$2y$10$e0MYzXyjpJS7Pd0RVvHwHe1n4V8kH/Yc/.HhA00.jG.yG/Lg21a0G', 'doctor', '+977-9800000002', 'active'),
+(3, 'Dr. Sunita Rai', 'sunita.rai@CareX.test', '$2y$10$e0MYzXyjpJS7Pd0RVvHwHe1n4V8kH/Yc/.HhA00.jG.yG/Lg21a0G', 'doctor', '+977-9800000003', 'active'),
+(4, 'Aarav Patel', 'patient@CareX.test', '$2y$10$e0MYzXyjpJS7Pd0RVvHwHe1n4V8kH/Yc/.HhA00.jG.yG/Lg21a0G', 'patient', '+977-9800000004', 'active'),
+(5, 'Bina Thapa', 'bina.patient@CareX.test', '$2y$10$e0MYzXyjpJS7Pd0RVvHwHe1n4V8kH/Yc/.HhA00.jG.yG/Lg21a0G', 'patient', '+977-9800000005', 'active'),
+(6, 'Ramesh Technician', 'lab@CareX.test', '$2y$10$e0MYzXyjpJS7Pd0RVvHwHe1n4V8kH/Yc/.HhA00.jG.yG/Lg21a0G', 'laboratory', '+977-9800000006', 'active'),
+(7, 'Sita Billing Manager', 'billing@CareX.test', '$2y$10$e0MYzXyjpJS7Pd0RVvHwHe1n4V8kH/Yc/.HhA00.jG.yG/Lg21a0G', 'billing', '+977-9800000007', 'active');
 
 -- 3. Insert Patients
 INSERT INTO `patients` (`id`, `user_id`, `patient_id`, `date_of_birth`, `gender`, `blood_group`, `address`, `emergency_contact`, `emergency_phone`) VALUES

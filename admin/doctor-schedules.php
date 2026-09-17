@@ -1,7 +1,7 @@
 <?php
 /**
  * Admin - Doctor Shift & Schedule Roster Management
- * CarePlus Smart Hospital Management System
+ * CareX Smart Hospital Management System
  */
 $pageTitle = "Doctor Schedules & Rosters";
 require_once __DIR__ . '/../includes/header.php';

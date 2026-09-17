@@ -98,7 +98,7 @@ if ($invoiceId > 0) {
             <div class="card border-0 shadow rounded-4 p-5 bg-white">
                 <div class="d-flex justify-content-between border-bottom pb-4 mb-4">
                     <div>
-                        <h2 class="fw-bold text-primary mb-0"><i class="bi bi-heart-pulse-fill me-2"></i>CarePlus Hospital</h2>
+                        <h2 class="fw-bold text-primary mb-0"><i class="bi bi-heart-pulse-fill me-2"></i>CareX Hospital</h2>
                         <p class="text-muted mb-0">Smart Healthcare Services</p>
                     </div>
                     <div class="text-end">

@@ -1,7 +1,7 @@
 <?php
 /**
  * Laboratory Worklist & Diagnostic LIS Processing Engine
- * CarePlus Smart Hospital Management System
+ * CareX Smart Hospital Management System
  */
 $pageTitle = "Diagnostic Lab Worklist Console";
 require_once __DIR__ . '/../includes/header.php';

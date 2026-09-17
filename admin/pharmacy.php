@@ -2,7 +2,7 @@
 ob_start();
 /**
  * Admin - Pharmacy Medicine Stock & Expiry Management
- * CarePlus Smart Hospital Management System
+ * CareX Smart Hospital Management System
  */
 $pageTitle = "Pharmacy Stock Inventory";
 require_once __DIR__ . '/../includes/header.php';

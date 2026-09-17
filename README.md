@@ -1,6 +1,6 @@
-# CarePlus Smart Hospital Management System (HMS)
+# CareX Smart Hospital Management System (HMS)
 
-CarePlus is a full-stack, enterprise-grade Hospital Management System designed for healthcare institutions. Built with native **PHP 8.2+**, **MySQL 8.0+**, **Bootstrap 5**, and **Chart.js**, it operates seamlessly without external runtime framework dependencies.
+CareX is a full-stack, enterprise-grade Hospital Management System designed for healthcare institutions. Built with native **PHP 8.2+**, **MySQL 8.0+**, **Bootstrap 5**, and **Chart.js**, it operates seamlessly without external runtime framework dependencies.
 
 ---
 

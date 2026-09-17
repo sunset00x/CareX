@@ -1,15 +1,15 @@
 <?php
 /**
  * Global Configuration Settings
- * CarePlus Smart Hospital Management System
+ * CareX Smart Hospital Management System
  */
 
 // Prevent direct execution
 if (count(get_included_files()) == 1) exit("Direct access not permitted.");
 
 // Application Metadata
-define('APP_NAME', 'CarePlus Hospital Management System');
-define('APP_SHORT_NAME', 'CarePlus HMS');
+define('APP_NAME', 'CareX Hospital Management System');
+define('APP_SHORT_NAME', 'CareX HMS');
 define('APP_VERSION', '1.0.0');
 define('CURRENCY_SYMBOL', 'NPR ');
 

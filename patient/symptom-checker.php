@@ -1,7 +1,7 @@
 <?php
 /**
  * Advanced AI Clinical Triage & Specialty Matcher
- * CarePlus Smart Hospital Management System
+ * CareX Smart Hospital Management System
  */
 $pageTitle = "Advanced Clinical AI Triage";
 require_once __DIR__ . '/../config/config.php';
@@ -178,7 +178,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title><?= $pageTitle ?> - CarePlus HMS</title>
+    <title><?= $pageTitle ?> - CareX HMS</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
 </head>

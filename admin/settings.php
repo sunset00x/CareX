@@ -73,7 +73,7 @@ try {
 
                             <div class="mb-3">
                                 <label class="form-label fw-semibold">Hospital Name *</label>
-                                <input type="text" name="hospital_name" class="form-control" value="<?= sanitize($settings['hospital_name'] ?? 'CarePlus Hospital') ?>" required>
+                                <input type="text" name="hospital_name" class="form-control" value="<?= sanitize($settings['hospital_name'] ?? 'CareX Hospital') ?>" required>
                             </div>
 
                             <div class="mb-3">

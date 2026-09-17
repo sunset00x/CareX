@@ -1,7 +1,7 @@
 <?php
 /**
  * Database Connection Engine (PDO Singleton Pattern)
- * CarePlus Smart Hospital Management System
+ * CareX Smart Hospital Management System
  */
 
 require_once __DIR__ . '/config.php';

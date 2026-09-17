@@ -6,7 +6,7 @@ require_once __DIR__ . '/functions.php';
 require_once __DIR__ . '/auth.php';
 $db = Database::getConnection();
 $sysSettings = $db->query("SELECT * FROM system_settings WHERE id = 1")->fetch() ?: [];
-$hospName = $sysSettings['hospital_name'] ?? 'CarePlus Hospital';
+$hospName = $sysSettings['hospital_name'] ?? 'CareX Hospital';
 ?>
 <!DOCTYPE html>
 <html lang="en">

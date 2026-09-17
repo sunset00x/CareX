@@ -1,5 +1,5 @@
 /**
- * CarePlus System Master Frontend Logic
+ * CareX System Master Frontend Logic
  */
 document.addEventListener('DOMContentLoaded', function() {
     

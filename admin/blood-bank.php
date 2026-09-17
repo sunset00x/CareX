@@ -2,7 +2,7 @@
 ob_start();
 /**
  * Admin - Blood Bank Reserves & Donor Unit Tracking
- * CarePlus Smart Hospital Management System
+ * CareX Smart Hospital Management System
  */
 $pageTitle = "Blood Bank Reserves";
 require_once __DIR__ . '/../includes/header.php';

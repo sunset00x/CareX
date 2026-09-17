@@ -6,7 +6,7 @@ $unreadNotifs = $user ? getUnreadNotificationCount($user['id']) : 0;
 <nav class="navbar navbar-expand-lg navbar-light main-navbar px-4 py-3 border-bottom">
     <div class="container-fluid p-0">
         <span class="navbar-brand fw-semibold text-secondary">
-            <i class="bi bi-hospital text-primary me-2"></i>CarePlus Portal
+            <i class="bi bi-hospital text-primary me-2"></i>CareX Portal
         </span>
 
         <div class="d-flex align-items-center ms-auto">

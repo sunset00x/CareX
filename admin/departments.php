@@ -2,7 +2,7 @@
 ob_start();
 /**
  * Admin - Department Management Console & Clinical Unit Tracking
- * CarePlus Smart Hospital Management System
+ * CareX Smart Hospital Management System
  */
 $pageTitle = "Departments Management";
 require_once __DIR__ . '/../includes/header.php';

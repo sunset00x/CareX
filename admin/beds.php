@@ -2,7 +2,7 @@
 ob_start();
 /**
  * Admin - IPD Bed Matrix & Inpatient Admission Management
- * CarePlus Smart Hospital Management System
+ * CareX Smart Hospital Management System
  */
 $pageTitle = "IPD Bed Matrix";
 require_once __DIR__ . '/../includes/header.php';

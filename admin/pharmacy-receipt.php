@@ -86,7 +86,7 @@ if ($unitPrice == 0 && $totalAmt > 0) { $unitPrice = $totalAmt / max(1, $qty); }
 <div class="container my-5" style="max-width: 480px;">
     <div class="card border shadow-sm p-4 rounded-4" id="printable-receipt">
         <div class="text-center mb-3">
-            <h4 class="fw-bold mb-0 text-primary">CarePlus Pharmacy</h4>
+            <h4 class="fw-bold mb-0 text-primary">CareX Pharmacy</h4>
             <small class="text-muted">Official Payment & Dispense Receipt</small>
             <hr class="my-3">
         </div>
@@ -135,7 +135,7 @@ if ($unitPrice == 0 && $totalAmt > 0) { $unitPrice = $totalAmt / max(1, $qty); }
         </div>
 
         <div class="text-center text-muted small mb-4">
-            <p class="mb-0">Thank you for choosing CarePlus Hospital!</p>
+            <p class="mb-0">Thank you for choosing CareX Hospital!</p>
             <small>Keep this receipt for your personal medical records.</small>
         </div>
 

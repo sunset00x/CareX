@@ -5,7 +5,7 @@
 $pageTitle = "Telehealth Video Consultation";
 require_once __DIR__ . '/includes/header.php';
 
-$roomId = sanitize($_GET['room'] ?? 'CarePlus-Consult-' . rand(1000, 9999));
+$roomId = sanitize($_GET['room'] ?? 'CareX-Consult-' . rand(1000, 9999));
 ?>
 
 <div class="container py-4">

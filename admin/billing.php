@@ -2,7 +2,7 @@
 ob_start();
 /**
  * Admin - Financial Billing Ledger & Advanced Ethical Workflows
- * CarePlus Smart Hospital Management System
+ * CareX Smart Hospital Management System
  */
 $pageTitle = "Financial Billing Ledger";
 require_once __DIR__ . '/../includes/header.php';

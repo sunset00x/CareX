@@ -1,7 +1,7 @@
 <?php
 /**
  * Authentication and Access Control Middleware (With Real-time Session Guard & Heartbeat)
- * CarePlus Smart Hospital Management System
+ * CareX Smart Hospital Management System
  */
 
 require_once __DIR__ . '/../config/config.php';

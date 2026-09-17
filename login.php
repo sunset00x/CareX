@@ -1,6 +1,6 @@
 <?php
 /**
- * CarePlus Hospital - Universal Multi-Role Login Portal
+ * CareX Hospital - Universal Multi-Role Login Portal
  */
 require_once __DIR__ . '/config/config.php';
 require_once __DIR__ . '/config/database.php';
@@ -53,7 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Department Login - CarePlus HMS</title>
+    <title>Department Login - CareX HMS</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
     <style>
@@ -74,7 +74,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <div class="container">
     <div class="text-center mb-5">
         <a href="index.php" class="text-decoration-none">
-            <h2 class="fw-bold text-primary"><i class="bi bi-heart-pulse-fill me-2"></i>CarePlus HMS Gateway</h2>
+            <h2 class="fw-bold text-primary"><i class="bi bi-heart-pulse-fill me-2"></i>CareX HMS Gateway</h2>
         </a>
         <p class="text-muted">Select your hospital department portal to sign in</p>
     </div>
@@ -82,35 +82,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <!-- Quick Department Switcher Tabs -->
     <div class="row g-3 mb-5 justify-content-center">
         <div class="col-6 col-md-2">
-            <div class="card role-card shadow-sm text-center p-3 rounded-4 bg-white" onclick="selectPortal('admin@careplus.test', 'admin')">
+            <div class="card role-card shadow-sm text-center p-3 rounded-4 bg-white" onclick="selectPortal('admin@CareX.test', 'admin')">
                 <i class="bi bi-shield-lock-fill text-danger fs-1"></i>
                 <h6 class="fw-bold mt-2 mb-0">Admin</h6>
                 <small class="text-muted">Management</small>
             </div>
         </div>
         <div class="col-6 col-md-2">
-            <div class="card role-card shadow-sm text-center p-3 rounded-4 bg-white" onclick="selectPortal('doctor@careplus.test', 'doctor')">
+            <div class="card role-card shadow-sm text-center p-3 rounded-4 bg-white" onclick="selectPortal('doctor@CareX.test', 'doctor')">
                 <i class="bi bi-person-md text-primary fs-1"></i>
                 <h6 class="fw-bold mt-2 mb-0">Doctor</h6>
                 <small class="text-muted">Clinical EMR</small>
             </div>
         </div>
         <div class="col-6 col-md-2">
-            <div class="card role-card shadow-sm text-center p-3 rounded-4 bg-white" onclick="selectPortal('patient@careplus.test', 'patient')">
+            <div class="card role-card shadow-sm text-center p-3 rounded-4 bg-white" onclick="selectPortal('patient@CareX.test', 'patient')">
                 <i class="bi bi-person-heart text-success fs-1"></i>
                 <h6 class="fw-bold mt-2 mb-0">Patient</h6>
                 <small class="text-muted">Self-Service</small>
             </div>
         </div>
         <div class="col-6 col-md-2">
-            <div class="card role-card shadow-sm text-center p-3 rounded-4 bg-white" onclick="selectPortal('lab@careplus.test', 'laboratory')">
+            <div class="card role-card shadow-sm text-center p-3 rounded-4 bg-white" onclick="selectPortal('lab@CareX.test', 'laboratory')">
                 <i class="bi bi-virus text-warning fs-1"></i>
                 <h6 class="fw-bold mt-2 mb-0">Laboratory</h6>
                 <small class="text-muted">Diagnostics</small>
             </div>
         </div>
         <div class="col-6 col-md-2">
-            <div class="card role-card shadow-sm text-center p-3 rounded-4 bg-white" onclick="selectPortal('billing@careplus.test', 'billing')">
+            <div class="card role-card shadow-sm text-center p-3 rounded-4 bg-white" onclick="selectPortal('billing@CareX.test', 'billing')">
                 <i class="bi bi-receipt-cutoff text-info fs-1"></i>
                 <h6 class="fw-bold mt-2 mb-0">Billing</h6>
                 <small class="text-muted">Invoicing</small>
@@ -133,7 +133,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                         <div class="mb-3">
                             <label class="form-label fw-semibold">Email Address</label>
-                            <input type="email" name="email" id="emailInput" class="form-control form-control-lg" placeholder="name@careplus.test" required>
+                            <input type="email" name="email" id="emailInput" class="form-control form-control-lg" placeholder="name@CareX.test" required>
                         </div>
 
                         <div class="mb-4">

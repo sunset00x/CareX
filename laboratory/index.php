@@ -1,7 +1,7 @@
 <?php
 /**
  * Laboratory Technician Main Dashboard
- * CarePlus Smart Hospital Management System
+ * CareX Smart Hospital Management System
  */
 $pageTitle = "Laboratory Dashboard";
 require_once __DIR__ . '/../includes/header.php';

@@ -1,6 +1,6 @@
 <?php
 /**
- * CarePlus Hospital Public Landing Page (With Global Header & Footer Includes)
+ * CareX Hospital Public Landing Page (With Global Header & Footer Includes)
  */
 require_once __DIR__ . '/includes/public_header.php';
 

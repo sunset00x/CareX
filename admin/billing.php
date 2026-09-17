@@ -1,188 +1,107 @@
 <?php
 /**
- * Advanced Dynamic Financial Billing & Invoice Engine
- * CarePlus Smart Hospital Management System
+ * Admin / Billing - Unified Itemized Invoicing & Charity Waiver Console
  */
-$pageTitle = "Financial Billing";
+$pageTitle = "Financial Billing & Insurance Ledger";
 require_once __DIR__ . '/../includes/header.php';
 require_once __DIR__ . '/../includes/sidebar.php';
-requireRole('admin');
+requireRole(['admin', 'billing']);
 
 $db = Database::getConnection();
 $error = '';
 
-// ==========================================
-// CSV EXPORT HANDLER
-// ==========================================
-if (isset($_GET['export']) && $_GET['export'] === 'csv') {
-    $stmtExp = $db->query("
-        SELECT b.invoice_number, u.name as patient_name, b.subtotal, b.tax, b.discount, b.total, b.paid_amount, b.due_amount, b.status, b.created_at
-        FROM bills b
-        JOIN patients p ON b.patient_id = p.id
-        JOIN users u ON p.user_id = u.id
-        ORDER BY b.created_at DESC
-    ");
-    $exportData = $stmtExp->fetchAll();
-
-    header('Content-Type: text/csv; charset=utf-8');
-    header('Content-Disposition: attachment; filename=careplus_invoices_' . date('Y-m-d') . '.csv');
-    $output = fopen('php://output', 'w');
-    fputcsv($output, ['Invoice Number', 'Patient Name', 'Subtotal', 'Tax', 'Discount', 'Total Amount', 'Paid Amount', 'Due Amount', 'Status', 'Generated Date']);
-    foreach ($exportData as $row) {
-        fputcsv($output, $row);
-    }
-    fclose($output);
-    exit();
-}
-
-// ==========================================
-// FORM ACTION HANDLERS (POST)
-// ==========================================
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+// ACTION HANDLER: CREATE ITEMIZED INVOICE
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && verifyCSRFToken($_POST['csrf_token'] ?? '')) {
     $action = sanitize($_POST['action'] ?? '');
-    $token  = $_POST['csrf_token'] ?? '';
 
-    if (!verifyCSRFToken($token)) {
-        $error = "Security Token Error. Operation cancelled.";
-    } else {
-        // 1. CREATE NEW DYNAMIC INVOICE
-        if ($action === 'create_invoice') {
-            $patientId  = (int)($_POST['patient_id'] ?? 0);
-            $subtotal   = (float)($_POST['subtotal'] ?? 0);
-            $tax        = (float)($_POST['tax'] ?? 0);
-            $discount   = (float)($_POST['discount'] ?? 0);
-            $paidAmount = (float)($_POST['paid_amount'] ?? 0);
-            $notes      = sanitize($_POST['notes'] ?? '');
+    if ($action === 'create_invoice') {
+        $patId     = (int)($_POST['patient_id'] ?? 0);
+        $categories = $_POST['category'] ?? [];
+        $descriptions = $_POST['description'] ?? [];
+        $costs     = $_POST['unit_cost'] ?? [];
+        $quantities = $_POST['quantity'] ?? [];
 
-            $total = max(0, ($subtotal + $tax) - $discount);
-            $due   = max(0, $total - $paidAmount);
+        if ($patId > 0 && !empty($categories)) {
+            try {
+                $db->beginTransaction();
 
-            $status = 'Unpaid';
-            if ($paidAmount >= $total && $total > 0) {
-                $status = 'Paid';
-            } elseif ($paidAmount > 0 && $paidAmount < $total) {
-                $status = 'Partially Paid';
-            }
+                $invNumber = 'INV-' . date('Ymd') . '-' . rand(1000, 9999);
+                $subtotal = 0;
 
-            if ($patientId > 0 && $total >= 0) {
-                try {
-                    $invoiceNum = 'INV-' . date('Ymd') . '-' . rand(1000, 9999);
-                    $stmtIns = $db->prepare("
-                        INSERT INTO bills (patient_id, invoice_number, subtotal, tax, discount, total, paid_amount, due_amount, status, notes)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    ");
-                    $stmtIns->execute([$patientId, $invoiceNum, $subtotal, $tax, $discount, $total, $paidAmount, $due, $status, $notes]);
-                    $billId = $db->lastInsertId();
-
-                    logAudit($_SESSION['user_id'], "Generated Invoice #{$invoiceNum} for Patient #{$patientId}", 'Billing', $billId);
-                    setFlashMessage('success', "Invoice {$invoiceNum} created successfully.");
-                    header('Location: billing.php');
-                    exit();
-                } catch (\Exception $e) {
-                    $error = "Invoice creation error: " . $e->getMessage();
+                // Calculate subtotal
+                for ($i = 0; $i < count($categories); $i++) {
+                    $subtotal += ((float)$costs[$i] * (int)$quantities[$i]);
                 }
-            } else {
-                $error = "Please select a valid patient and enter valid billing amounts.";
-            }
-        }
 
-        // 2. PROCESS PAYMENT FOR INVOICE
-        elseif ($action === 'record_payment') {
-            $billId  = (int)($_POST['bill_id'] ?? 0);
-            $payAmt  = (float)($_POST['payment_amount'] ?? 0);
+                $stmtInv = $db->prepare("
+                    INSERT INTO invoices (invoice_number, patient_id, subtotal_amount, net_payable_amount, due_balance, status) 
+                    VALUES (?, ?, ?, ?, ?, 'Unpaid')
+                ");
+                $stmtInv->execute([$invNumber, $patId, $subtotal, $subtotal, $subtotal]);
+                $invId = $db->lastInsertId();
 
-            if ($billId > 0 && $payAmt > 0) {
-                try {
-                    $db->beginTransaction();
-                    $stmtB = $db->prepare("SELECT * FROM bills WHERE id = ? FOR UPDATE");
-                    $stmtB->execute([$billId]);
-                    $bill = $stmtB->fetch();
-
-                    if ($bill) {
-                        $newPaid = $bill['paid_amount'] + $payAmt;
-                        $newDue  = max(0, $bill['total'] - $newPaid);
-                        
-                        $newStatus = 'Partially Paid';
-                        if ($newDue <= 0) {
-                            $newStatus = 'Paid';
-                        }
-
-                        $stmtUpd = $db->prepare("UPDATE bills SET paid_amount = ?, due_amount = ?, status = ? WHERE id = ?");
-                        $stmtUpd->execute([$newPaid, $newDue, $newStatus, $billId]);
-
-                        $db->commit();
-                        logAudit($_SESSION['user_id'], "Recorded Payment of " . formatCurrency($payAmt) . " for Invoice #{$bill['invoice_number']}", 'Billing', $billId);
-                        setFlashMessage('success', "Payment recorded successfully for Invoice {$bill['invoice_number']}.");
-                        header('Location: billing.php');
-                        exit();
-                    }
-                } catch (\Exception $e) {
-                    $db->rollBack();
-                    $error = "Payment recording error: " . $e->getMessage();
+                // Insert itemized line items
+                $stmtItem = $db->prepare("INSERT INTO invoice_items (invoice_id, service_category, item_description, unit_cost, quantity, total_cost) VALUES (?, ?, ?, ?, ?, ?)");
+                for ($i = 0; $i < count($categories); $i++) {
+                    $c = sanitize($categories[$i]);
+                    $d = sanitize($descriptions[$i]);
+                    $u = (float)$costs[$i];
+                    $q = (int)$quantities[$i];
+                    $t = $u * $q;
+                    $stmtItem->execute([$invId, $c, $d, $u, $q, $t]);
                 }
+
+                $db->commit();
+                setFlashMessage('success', "Itemized Invoice {$invNumber} created successfully.");
+                header('Location: billing.php');
+                exit();
+            } catch (\Exception $e) {
+                $db->rollBack();
+                $error = "Invoice Creation Error: " . $e->getMessage();
             }
         }
+    }
+    // ACTION HANDLER: APPLY CHARITY WAIVER
+    elseif ($action === 'apply_waiver') {
+        $invId   = (int)($_POST['invoice_id'] ?? 0);
+        $waiver  = (float)($_POST['waiver_amount'] ?? 0);
+        $reason  = sanitize($_POST['reason'] ?? '');
 
-        // 3. DELETE INVOICE RECORD
-        elseif ($action === 'delete_invoice') {
-            $billId = (int)($_POST['bill_id'] ?? 0);
-            if ($billId > 0) {
-                try {
-                    $stmtDel = $db->prepare("DELETE FROM bills WHERE id = ?");
-                    $stmtDel->execute([$billId]);
-                    logAudit($_SESSION['user_id'], "Deleted Invoice Record #{$billId}", 'Billing');
-                    setFlashMessage('success', "Invoice removed successfully.");
-                    header('Location: billing.php');
-                    exit();
-                } catch (\Exception $e) {
-                    $error = "Deletion error: " . $e->getMessage();
-                }
+        if ($invId > 0 && $waiver > 0 && !empty($reason)) {
+            try {
+                $db->beginTransaction();
+
+                $stmtWaiver = $db->prepare("INSERT INTO charity_waivers (invoice_id, waived_by_user_id, waiver_amount, reason) VALUES (?, ?, ?, ?)");
+                $stmtWaiver->execute([$invId, $_SESSION['user_id'], $waiver, $reason]);
+
+                $stmtUpdInv = $db->prepare("
+                    UPDATE invoices 
+                    SET discount_waiver_amount = discount_waiver_amount + ?, 
+                        net_payable_amount = GREATEST(0, net_payable_amount - ?),
+                        due_balance = GREATEST(0, due_balance - ?)
+                    WHERE id = ?
+                ");
+                $stmtUpdInv->execute([$waiver, $waiver, $waiver, $invId]);
+
+                $db->commit();
+                setFlashMessage('success', "Charity Waiver of " . formatCurrency($waiver) . " applied ethically.");
+                header('Location: billing.php');
+                exit();
+            } catch (\Exception $e) {
+                $db->rollBack();
+                $error = "Waiver Error: " . $e->getMessage();
             }
         }
     }
 }
 
-// ==========================================
-// DYNAMIC REVENUE METRICS & DATA FETCHING
-// ==========================================
-$totalRevenue = (float)($db->query("SELECT SUM(paid_amount) FROM bills")->fetchColumn() ?: 0.00);
-$totalDue     = (float)($db->query("SELECT SUM(due_amount) FROM bills WHERE status IN ('Unpaid', 'Partially Paid')")->fetchColumn() ?: 0.00);
-$totalInvoices = (int)($db->query("SELECT COUNT(*) FROM bills")->fetchColumn() ?: 0);
-
-$searchQuery = sanitize($_GET['q'] ?? '');
-$statusFilter = sanitize($_GET['status'] ?? '');
-
-$sql = "
-    SELECT b.*, u.name as patient_name, u.email as patient_email, p.patient_id as patient_code
-    FROM bills b
-    JOIN patients p ON b.patient_id = p.id
-    JOIN users u ON p.user_id = u.id
-    WHERE 1=1
-";
-$params = [];
-
-if (!empty($statusFilter)) {
-    $sql .= " AND b.status = ?";
-    $params[] = $statusFilter;
-}
-
-if (!empty($searchQuery)) {
-    $sql .= " AND (b.invoice_number LIKE ? OR u.name LIKE ? OR p.patient_id LIKE ?)";
-    $term = "%{$searchQuery}%";
-    $params[] = $term; $params[] = $term; $params[] = $term;
-}
-
-$sql .= " ORDER BY b.created_at DESC";
-$stmtBills = $db->prepare($sql);
-$stmtBills->execute($params);
-$invoices = $stmtBills->fetchAll();
-
-// Fetch Patients for dynamic select dropdown
-$allPatients = $db->query("
-    SELECT p.id, p.patient_id, u.name 
-    FROM patients p 
+$patients = $db->query("SELECT p.id, u.name FROM patients p JOIN users u ON p.user_id = u.id ORDER BY u.name ASC")->fetchAll();
+$invoices = $db->query("
+    SELECT i.*, u.name as patient_name 
+    FROM invoices i 
+    JOIN patients p ON i.patient_id = p.id 
     JOIN users u ON p.user_id = u.id 
-    ORDER BY u.name ASC
+    ORDER BY i.created_at DESC
 ")->fetchAll();
 ?>
 
@@ -191,147 +110,57 @@ $allPatients = $db->query("
 
     <div class="container-fluid p-4">
         <?php displayFlashMessage(); ?>
-        <?php if (!empty($error)): ?><div class="alert alert-danger"><?= sanitize($error) ?></div><?php endif; ?>
+        <?php if ($error): ?><div class="alert alert-danger"><?= sanitize($error) ?></div><?php endif; ?>
 
-        <!-- Title & Action Header -->
-        <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
+        <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
-                <h2 class="fw-bold mb-0">Financial Billing & Invoice Engine</h2>
-                <p class="text-muted mb-0">Generate dynamic patient invoices, record payments, and monitor revenue accounts in real time.</p>
+                <h2 class="fw-bold mb-0">Financial Billing & Revenue Ledger</h2>
+                <p class="text-muted mb-0">Itemized bill generation, charity waivers, and installment deposit tracking.</p>
             </div>
-            <div class="d-flex gap-2">
-                <button type="button" class="btn btn-primary fw-bold" data-bs-toggle="modal" data-bs-target="#createInvoiceModal">
-                    <i class="bi bi-plus-circle me-1"></i> Create New Invoice
-                </button>
-                <a href="billing.php?export=csv" class="btn btn-outline-success fw-bold">
-                    <i class="bi bi-filetype-csv me-1"></i> Export Ledger
-                </a>
-            </div>
+            <button class="btn btn-primary fw-bold rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#createInvoiceModal">
+                <i class="bi bi-receipt me-1"></i> Create Itemized Invoice
+            </button>
         </div>
 
-        <!-- Dynamic Real-Time KPI Cards -->
-        <div class="row g-3 mb-4">
-            <div class="col-md-4">
-                <div class="card card-kpi p-3 bg-white border border-success border-2 shadow-sm rounded-4">
-                    <small class="text-success fw-bold"><i class="bi bi-cash-stack me-1"></i>TOTAL REVENUE COLLECTED</small>
-                    <h3 class="fw-bold mb-0 text-dark"><?= formatCurrency($totalRevenue) ?></h3>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card card-kpi p-3 bg-white border border-danger border-2 shadow-sm rounded-4">
-                    <small class="text-danger fw-bold"><i class="bi bi-exclamation-circle me-1"></i>OUTSTANDING RECEIVABLES</small>
-                    <h3 class="fw-bold mb-0 text-danger"><?= formatCurrency($totalDue) ?></h3>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card card-kpi p-3 bg-white border border-primary border-2 shadow-sm rounded-4">
-                    <small class="text-primary fw-bold"><i class="bi bi-receipt me-1"></i>TOTAL INVOICES ISSUED</small>
-                    <h3 class="fw-bold mb-0 text-dark"><?= $totalInvoices ?> Records</h3>
-                </div>
-            </div>
-        </div>
-
-        <!-- Search & Filter Bar -->
-        <div class="card border-0 shadow-sm rounded-4 mb-4">
-            <div class="card-body p-3">
-                <form method="GET" action="billing.php" class="row g-2">
-                    <div class="col-md-7">
-                        <input type="text" name="q" class="form-control" placeholder="Search invoice #, patient name, or patient ID..." value="<?= sanitize($searchQuery) ?>">
-                    </div>
-                    <div class="col-md-3">
-                        <select name="status" class="form-select">
-                            <option value="">All Payment Statuses</option>
-                            <option value="Paid" <?= $statusFilter === 'Paid' ? 'selected' : '' ?>>Paid</option>
-                            <option value="Partially Paid" <?= $statusFilter === 'Partially Paid' ? 'selected' : '' ?>>Partially Paid</option>
-                            <option value="Unpaid" <?= $statusFilter === 'Unpaid' ? 'selected' : '' ?>>Unpaid</option>
-                        </select>
-                    </div>
-                    <div class="col-md-2">
-                        <button type="submit" class="btn btn-primary w-100 fw-bold">Filter</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-
-        <!-- Dynamic Invoice Ledger Table -->
         <div class="card border-0 shadow-sm rounded-4">
             <div class="card-body p-0">
                 <div class="table-responsive">
                     <table class="table table-hover align-middle mb-0">
                         <thead class="table-light">
                             <tr>
-                                <th>Invoice Number</th>
-                                <th>Patient Details</th>
+                                <th>Invoice #</th>
+                                <th>Patient Name</th>
                                 <th>Subtotal</th>
-                                <th>Tax / Discount</th>
-                                <th>Total Amount</th>
-                                <th>Paid</th>
+                                <th>Waiver / Discount</th>
+                                <th>Net Payable</th>
                                 <th>Due Balance</th>
                                 <th>Status</th>
-                                <th class="text-end pe-4">Actions</th>
+                                <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <?php if (!empty($invoices)): foreach ($invoices as $row): ?>
+                            <?php if ($invoices): foreach ($invoices as $inv): ?>
                                 <tr>
-                                    <td class="fw-bold text-primary"><code><?= sanitize($row['invoice_number']) ?></code></td>
+                                    <td><code><?= sanitize($inv['invoice_number']) ?></code></td>
+                                    <td class="fw-bold text-dark"><?= sanitize($inv['patient_name']) ?></td>
+                                    <td><?= formatCurrency($inv['subtotal_amount']) ?></td>
+                                    <td class="text-danger fw-bold">- <?= formatCurrency($inv['discount_waiver_amount']) ?></td>
+                                    <td class="fw-bold text-dark"><?= formatCurrency($inv['net_payable_amount']) ?></td>
+                                    <td class="fw-bold text-danger"><?= formatCurrency($inv['due_balance']) ?></td>
                                     <td>
-                                        <div class="fw-bold text-dark"><?= sanitize($row['patient_name']) ?></div>
-                                        <small class="text-muted">ID: <?= sanitize($row['patient_code']) ?></small>
-                                    </td>
-                                    <td><?= formatCurrency($row['subtotal']) ?></td>
-                                    <td><small class="text-muted">+<?= formatCurrency($row['tax']) ?> / -<?= formatCurrency($row['discount']) ?></small></td>
-                                    <td class="fw-bold text-dark"><?= formatCurrency($row['total']) ?></td>
-                                    <td class="text-success fw-bold"><?= formatCurrency($row['paid_amount']) ?></td>
-                                    <td class="text-danger fw-bold"><?= formatCurrency($row['due_amount']) ?></td>
-                                    <td>
-                                        <span class="badge bg-<?= $row['status'] === 'Paid' ? 'success' : ($row['status'] === 'Partially Paid' ? 'warning' : 'danger') ?> px-3 py-2">
-                                            <?= sanitize($row['status']) ?>
+                                        <span class="badge bg-<?= $inv['status'] === 'Paid' ? 'success' : ($inv['status'] === 'Partially Paid' ? 'warning text-dark' : 'danger') ?>">
+                                            <?= $inv['status'] ?>
                                         </span>
                                     </td>
-                                    <td class="text-end pe-4">
-                                        <div class="dropdown">
-                                            <button class="btn btn-sm btn-light border dropdown-toggle fw-semibold" type="button" data-bs-toggle="dropdown">
-                                                Manage
-                                            </button>
-                                            <ul class="dropdown-menu dropdown-menu-end shadow border-0">
-                                                <?php if ($row['due_amount'] > 0): ?>
-                                                    <li>
-                                                        <button type="button" class="dropdown-item text-success fw-semibold"
-                                                                data-bs-toggle="modal"
-                                                                data-bs-target="#paymentModal"
-                                                                data-id="<?= $row['id'] ?>"
-                                                                data-num="<?= sanitize($row['invoice_number']) ?>"
-                                                                data-due="<?= $row['due_amount'] ?>">
-                                                            <i class="bi bi-cash-coin me-2"></i>Record Payment
-                                                        </button>
-                                                    </li>
-                                                <?php endif; ?>
-                                                <li>
-                                                    <button type="button" class="dropdown-item" onclick="printReceipt('<?= sanitize($row['invoice_number']) ?>', '<?= sanitize($row['patient_name']) ?>', '<?= $row['total'] ?>', '<?= $row['paid_amount'] ?>', '<?= $row['due_amount'] ?>', '<?= $row['status'] ?>')">
-                                                        <i class="bi bi-printer me-2 text-primary"></i>Print Receipt
-                                                    </button>
-                                                </li>
-                                                <li><hr class="dropdown-divider"></li>
-                                                <li>
-                                                    <form action="billing.php" method="POST" onsubmit="return confirm('Delete invoice <?= sanitize($row['invoice_number']) ?> permanently?');">
-                                                        <input type="hidden" name="csrf_token" value="<?= generateCSRFToken() ?>">
-                                                        <input type="hidden" name="action" value="delete_invoice">
-                                                        <input type="hidden" name="bill_id" value="<?= $row['id'] ?>">
-                                                        <button type="submit" class="dropdown-item text-danger"><i class="bi bi-trash3 me-2"></i>Delete Invoice</button>
-                                                    </form>
-                                                </li>
-                                            </ul>
-                                        </div>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-danger fw-bold rounded-pill me-1" 
+                                                onclick="openWaiverModal(<?= $inv['id'] ?>, '<?= sanitize($inv['invoice_number']) ?>', <?= $inv['due_balance'] ?>)">
+                                            <i class="bi bi-heart-fill me-1"></i> Apply Charity Waiver
+                                        </button>
                                     </td>
                                 </tr>
                             <?php endforeach; else: ?>
-                                <tr>
-                                    <td colspan="9" class="text-center py-5 text-muted">
-                                        <i class="bi bi-receipt fs-2 d-block mb-2 text-secondary"></i>
-                                        No billing invoices recorded yet. Click <strong>"Create New Invoice"</strong> above to generate real dynamic bills.
-                                    </td>
-                                </tr>
+                                <tr><td colspan="8" class="text-center py-4 text-muted">No invoices generated yet.</td></tr>
                             <?php endif; ?>
                         </tbody>
                     </table>
@@ -341,14 +170,12 @@ $allPatients = $db->query("
     </div>
 </div>
 
-<!-- ========================================== -->
-<!-- MODAL: CREATE DYNAMIC INVOICE               -->
-<!-- ========================================== -->
+<!-- Modal: Create Itemized Invoice -->
 <div class="modal fade" id="createInvoiceModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header bg-light border-0">
-                <h5 class="modal-title fw-bold"><i class="bi bi-receipt-cutoff text-primary me-2"></i>Generate Dynamic Patient Invoice</h5>
+                <h5 class="modal-title fw-bold"><i class="bi bi-receipt text-primary me-2"></i>New Itemized Invoice Builder</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form action="billing.php" method="POST">
@@ -357,44 +184,29 @@ $allPatients = $db->query("
                     <input type="hidden" name="action" value="create_invoice">
 
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">Select Patient *</label>
-                        <select name="patient_id" class="form-select form-select-lg" required>
-                            <option value="">-- Choose Patient --</option>
-                            <?php foreach ($allPatients as $pt): ?>
-                                <option value="<?= $pt['id'] ?>"><?= sanitize($pt['name']) ?> (ID: <?= sanitize($pt['patient_id']) ?>)</option>
-                            <?php endforeach; ?>
+                        <label class="form-label fw-semibold">Patient *</label>
+                        <select name="patient_id" class="form-select" required>
+                            <option value="">Select Patient...</option>
+                            <?php foreach ($patients as $p): ?><option value="<?= $p['id'] ?>"><?= sanitize($p['name']) ?></option><?php endforeach; ?>
                         </select>
                     </div>
 
-                    <div class="row g-3 mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">Subtotal Amount (NPR) *</label>
-                            <input type="number" step="0.01" name="subtotal" id="inv_subtotal" class="form-control" placeholder="0.00" required oninput="calcTotal()">
+                    <h6 class="fw-bold text-primary mb-3">Itemized Line Items</h6>
+                    <div id="lineItemsContainer">
+                        <div class="row g-2 mb-2 line-item-row">
+                            <div class="col-md-3">
+                                <select name="category[]" class="form-select" required>
+                                    <option value="OPD Consultation">OPD Consultation</option>
+                                    <option value="IPD Daily Bed">IPD Daily Bed</option>
+                                    <option value="Pharmacy POS">Pharmacy POS</option>
+                                    <option value="Diagnostic Lab">Diagnostic Lab</option>
+                                    <option value="Surgery/Procedure">Surgery/Procedure</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4"><input type="text" name="description[]" class="form-control" placeholder="Description / Service Name" required></div>
+                            <div class="col-md-2"><input type="number" step="0.01" name="unit_cost[]" class="form-control" placeholder="Unit Cost" required></div>
+                            <div class="col-md-2"><input type="number" name="quantity[]" class="form-control" value="1" min="1" required></div>
                         </div>
-                        <div class="col-md-3">
-                            <label class="form-label fw-semibold">Tax (NPR)</label>
-                            <input type="number" step="0.01" name="tax" id="inv_tax" class="form-control" value="0.00" oninput="calcTotal()">
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label fw-semibold">Discount (NPR)</label>
-                            <input type="number" step="0.01" name="discount" id="inv_discount" class="form-control" value="0.00" oninput="calcTotal()">
-                        </div>
-                    </div>
-
-                    <div class="row g-3 mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">Initial Payment Received (NPR)</label>
-                            <input type="number" step="0.01" name="paid_amount" id="inv_paid" class="form-control" value="0.00" oninput="calcTotal()">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">Calculated Total</label>
-                            <input type="text" id="inv_total_display" class="form-control form-control-lg bg-light fw-bold text-success" value="NPR 0.00" readonly>
-                        </div>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Billing Notes / Service Descriptions</label>
-                        <textarea name="notes" class="form-control" rows="2" placeholder="e.g. OPD Consultation + Blood Test Fees"></textarea>
                     </div>
                 </div>
                 <div class="modal-footer border-0 bg-light">
@@ -406,33 +218,40 @@ $allPatients = $db->query("
     </div>
 </div>
 
-<!-- ========================================== -->
-<!-- MODAL: RECORD PAYMENT                       -->
-<!-- ========================================== -->
-<div class="modal fade" id="paymentModal" tabindex="-1">
+<!-- Modal: Charity Waiver -->
+<div class="modal fade" id="waiverModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header bg-light border-0">
-                <h5 class="modal-title fw-bold"><i class="bi bi-cash-stack text-success me-2"></i>Record Invoice Payment</h5>
+                <h5 class="modal-title fw-bold text-danger"><i class="bi bi-heart-fill me-2"></i>Apply Charity Waiver / Relief</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form action="billing.php" method="POST">
                 <div class="modal-body p-4">
                     <input type="hidden" name="csrf_token" value="<?= generateCSRFToken() ?>">
-                    <input type="hidden" name="action" value="record_payment">
-                    <input type="hidden" name="bill_id" id="pay_bill_id">
+                    <input type="hidden" name="action" value="apply_waiver">
+                    <input type="hidden" name="invoice_id" id="waiver_invoice_id">
 
-                    <p class="mb-1">Invoice: <strong id="pay_inv_num" class="text-primary"></strong></p>
-                    <p class="text-muted mb-3">Outstanding Due: <strong id="pay_due_amt" class="text-danger"></strong></p>
+                    <p class="text-muted small mb-3">Applying a charitable relief waiver reduces the patient's payable debt balance ethically.</p>
 
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">Enter Amount Received (NPR) *</label>
-                        <input type="number" step="0.01" name="payment_amount" id="pay_amount_input" class="form-control form-control-lg" required>
+                        <label class="form-label fw-semibold">Target Invoice Number</label>
+                        <input type="text" id="waiver_invoice_num" class="form-control" readonly>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Waiver / Discount Amount *</label>
+                        <input type="number" step="0.01" name="waiver_amount" class="form-control" placeholder="0.00" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Ethical Justification / Reason *</label>
+                        <textarea name="reason" class="form-control" rows="3" placeholder="e.g. Destitute patient, Social Health Charity Waiver Grant" required></textarea>
                     </div>
                 </div>
                 <div class="modal-footer border-0 bg-light">
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-success fw-bold px-4">Submit Payment</button>
+                    <button type="submit" class="btn btn-danger fw-bold px-4">Authorize Waiver</button>
                 </div>
             </form>
         </div>
@@ -440,72 +259,11 @@ $allPatients = $db->query("
 </div>
 
 <script>
-function calcTotal() {
-    const sub = parseFloat(document.getElementById('inv_subtotal').value) || 0;
-    const tax = parseFloat(document.getElementById('inv_tax').value) || 0;
-    const disc = parseFloat(document.getElementById('inv_discount').value) || 0;
-    const total = Math.max(0, (sub + tax) - disc);
-    document.getElementById('inv_total_display').value = 'NPR ' + total.toFixed(2);
-}
-
-document.addEventListener('DOMContentLoaded', function() {
-    const payModal = document.getElementById('paymentModal');
-    if (payModal) {
-        payModal.addEventListener('show.bs.modal', function(e) {
-            const btn = e.relatedTarget;
-            const due = parseFloat(btn.getAttribute('data-due')) || 0;
-            document.getElementById('pay_bill_id').value = btn.getAttribute('data-id');
-            document.getElementById('pay_inv_num').textContent = btn.getAttribute('data-num');
-            document.getElementById('pay_due_amt').textContent = 'NPR ' + due.toFixed(2);
-            document.getElementById('pay_amount_input').value = due.toFixed(2);
-        });
-    }
-});
-
-function printReceipt(invNum, patient, total, paid, due, status) {
-    const printWindow = window.open('', '', 'width=800,height=600');
-    printWindow.document.write(`
-        <html>
-            <head>
-                <title>Receipt - ${invNum}</title>
-                <style>
-                    body { font-family: Arial, sans-serif; padding: 20px; color: #333; }
-                    .header { text-align: center; border-bottom: 2px solid #0284c7; padding-bottom: 10px; }
-                    .details { margin: 20px 0; font-size: 14px; }
-                    .table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-                    .table th, .table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-                    .table th { background-color: #f8fafc; }
-                    .footer { text-align: center; margin-top: 30px; font-size: 12px; color: #666; }
-                </style>
-            </head>
-            <body>
-                <div class="header">
-                    <h2>CarePlus Hospital Management System</h2>
-                    <p>Official Patient Invoice & Payment Receipt</p>
-                </div>
-                <div class="details">
-                    <p><strong>Invoice Number:</strong> ${invNum}</p>
-                    <p><strong>Patient Name:</strong> ${patient}</p>
-                    <p><strong>Status:</strong> ${status}</p>
-                </div>
-                <table class="table">
-                    <thead>
-                        <tr><th>Description</th><th>Amount (NPR)</th></tr>
-                    </thead>
-                    <tbody>
-                        <tr><td>Total Billed Amount</td><td>NPR ${parseFloat(total).toFixed(2)}</td></tr>
-                        <tr><td>Amount Paid</td><td>NPR ${parseFloat(paid).toFixed(2)}</td></tr>
-                        <tr><td>Remaining Due Balance</td><td>NPR ${parseFloat(due).toFixed(2)}</td></tr>
-                    </tbody>
-                </table>
-                <div class="footer">
-                    <p>Thank you for choosing CarePlus Hospital.</p>
-                </div>
-            </body>
-        </html>
-    `);
-    printWindow.document.close();
-    printWindow.print();
+function openWaiverModal(id, num, due) {
+    document.getElementById('waiver_invoice_id').value = id;
+    document.getElementById('waiver_invoice_num').value = num;
+    var waiverModal = new bootstrap.Modal(document.getElementById('waiverModal'));
+    waiverModal.show();
 }
 </script>
 

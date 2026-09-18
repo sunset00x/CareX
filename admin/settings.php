@@ -1,14 +1,13 @@
 <?php
 ob_start();
-/**
- * Admin System Settings & Branding Console
- */
+
 $pageTitle = "System Settings & Branding";
 require_once __DIR__ . '/../includes/header.php';
 require_once __DIR__ . '/../includes/sidebar.php';
 requireRole('admin');
 
-$db = Database::getConnection();
+$db = Database::getCon
+nection();
 $error = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
